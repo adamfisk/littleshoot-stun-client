@@ -20,7 +20,12 @@
             <groupId>org.apache.mina</groupId>
             <artifactId>mina-core</artifactId>
             </dependency>
-                 
+               
+        <dependency>
+            <groupId>org.lastbamboo</groupId>
+            <artifactId>lastbamboo-common-stun-stack</artifactId>
+            </dependency>
+              
         <dependency>
             <groupId>org.lastbamboo</groupId>
             <artifactId>lastbamboo-common-util</artifactId>
