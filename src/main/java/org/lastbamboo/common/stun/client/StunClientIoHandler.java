@@ -10,13 +10,21 @@ import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageFactory;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 
+/**
+ * Creates a new IO handler for handling protocol events for STUN clients.
+ */
 public class StunClientIoHandler extends AbstractStunIoHandler
     {
     
     private static final Log LOG = LogFactory.getLog(StunClientIoHandler.class);
     private final StunMessageFactory m_messageFactory;
-    //private final StunMessageFactory m_messageFactory;
     
+    /**
+     * Creates a new STUN IO handler.
+     * 
+     * @param messageFactory The factory for creating STUN messages.
+     * @param visitorFactory The factory for creating message visitors.
+     */
     public StunClientIoHandler(final StunMessageFactory messageFactory,
         final StunMessageVisitorFactory visitorFactory)
         {
@@ -34,6 +42,7 @@ public class StunClientIoHandler extends AbstractStunIoHandler
         {
         LOG.debug("Session opened...");
 
+        // Write a binding request.
         final StunMessage message = 
             this.m_messageFactory.createBindingRequest();
         session.write(message);
