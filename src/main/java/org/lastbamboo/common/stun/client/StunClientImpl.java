@@ -114,8 +114,6 @@ public class StunClientImpl implements StunClient, BindingResponseListener
         
         final ConnectFuture future = 
             connector.connect(stunServer, localAddress, handler, config);
-
-        // TODO: join here?
         }
 
     private InetSocketAddress getLocalAddress(int port)
