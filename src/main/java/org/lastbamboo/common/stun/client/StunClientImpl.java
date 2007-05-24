@@ -65,6 +65,9 @@ public class StunClientImpl implements StunClient, BindingResponseListener
             {
             while (m_bindingResponse == null && requests < 10)
                 {
+                // Issue a new request every few seconds.  We're using UDP,
+                // so some requests will be lost.  This just keeps sending
+                // them until we get a response.
                 requestMappedAddress(visitorFactory, port);
                 try
                     {
