@@ -2,9 +2,7 @@ package org.lastbamboo.common.stun.client;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoSession;
-import org.apache.mina.util.SessionUtil;
 import org.lastbamboo.common.stun.stack.AbstractStunIoHandler;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageFactory;
@@ -32,12 +30,6 @@ public class StunClientIoHandler extends AbstractStunIoHandler
         m_messageFactory = messageFactory;
         }
     
-    public void sessionCreated(final IoSession session) throws Exception
-        {
-        LOG.debug("Created session");
-        SessionUtil.initialize(session);
-        }
-    
     public void sessionOpened(final IoSession session)
         {
         LOG.debug("Session opened...");
@@ -51,19 +43,12 @@ public class StunClientIoHandler extends AbstractStunIoHandler
     public void sessionClosed(final IoSession session)
         {
         // Print out total number of bytes read from the remote peer.
-        System.err.println( "Total " + session.getReadBytes() + " byte(s)" );
-        }
-
-    public void sessionIdle(final IoSession session, final IdleStatus status)
-        {
-        // Close the connection if reader is idle.
-        if( status == IdleStatus.READER_IDLE )
-            session.close();
+        LOG.debug("Total " + session.getReadBytes() + " byte(s)");
         }
     
     public void exceptionCaught(final IoSession session, final Throwable cause)
         {
-        cause.printStackTrace();
+        LOG.warn("Exception on STUN client", cause);
         session.close();
         }
     
