@@ -57,6 +57,8 @@ public class UdpStunClient implements StunClient, BindingResponseListener
 
     private final StunMessage m_bindingRequest;
 
+    private ConnectFuture m_connectFuture;
+
     /**
      * Creates a new STUN client.  This will connect on the default STUN port
      * of 3478.
@@ -109,6 +111,8 @@ public class UdpStunClient implements StunClient, BindingResponseListener
             {
             while (m_bindingResponse == null && requests < 7)
                 {
+                waitIfNoResponse(waitTime);
+                
                 // See draft-ietf-behave-rfc3489bis-06.txt section 7.1.  We
                 // continually send the same request until we receive a 
                 // response, never sending more that 7 requests and using
@@ -119,7 +123,7 @@ public class UdpStunClient implements StunClient, BindingResponseListener
                 
                 // Wait a little longer with each send.
                 waitTime = (2 * waitTime) + rto;
-                waitIfNoResponse(waitTime);
+                
                 requests++;
                 }
             
@@ -139,6 +143,8 @@ public class UdpStunClient implements StunClient, BindingResponseListener
 
     private void waitIfNoResponse(final long waitTime)
         {
+        LOG.debug("Waiting "+waitTime+" milliseconds...");
+        if (waitTime == 0L) return;
         if (m_bindingResponse == null)
             {
             try
@@ -155,18 +161,31 @@ public class UdpStunClient implements StunClient, BindingResponseListener
     private void requestMappedAddress(final InetSocketAddress localAddress)
         {
         LOG.debug("Requesting mapped address...");
-        final ConnectFuture cf = 
-            m_connector.connect(m_stunServer, localAddress, m_ioHandler, 
-                m_connectorConfig);
-        final IoFutureListener futureListener = new IoFutureListener()
+        
+        // If we're already "connected", use the existing session.
+        if (this.m_connectFuture != null && this.m_connectFuture.isConnected())
             {
-            public void operationComplete(final IoFuture future)
+            final IoSession session = m_connectFuture.getSession();
+            session.write(m_bindingRequest);
+            }
+        
+        // Otherwise, it's probably the first message, so create the UDP
+        // client and connect it to the server.
+        else
+            {
+            this.m_connectFuture = 
+                m_connector.connect(m_stunServer, localAddress, m_ioHandler, 
+                    m_connectorConfig);
+            final IoFutureListener futureListener = new IoFutureListener()
                 {
-                final IoSession session = future.getSession();
-                session.write(m_bindingRequest);
-                }
-            };
-        cf.addListener(futureListener);
+                public void operationComplete(final IoFuture future)
+                    {
+                    final IoSession session = future.getSession();
+                    session.write(m_bindingRequest);
+                    }
+                };
+            this.m_connectFuture.addListener(futureListener);
+            }
         }
 
     private InetSocketAddress getLocalAddress(int port)
