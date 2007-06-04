@@ -55,8 +55,6 @@ public class UdpStunClient implements StunClient, BindingResponseListener
 
     private final DatagramConnectorConfig m_connectorConfig;
 
-    //private final StunMessageFactoryImpl m_messageFactory;
-
     private final StunMessage m_bindingRequest;
 
     /**
