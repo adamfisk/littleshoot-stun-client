@@ -26,8 +26,7 @@ public class StunClientMessageVisitorFactory implements
 
     public StunMessageVisitor createVisitor(final IoSession session)
         {
-        return new StunClientMessageVisitor(this.m_bindingResponseListener,
-            session);
+        return new StunClientMessageVisitor(this.m_bindingResponseListener);
         }
 
     }
