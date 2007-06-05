@@ -28,7 +28,7 @@
               
         <dependency>
             <groupId>org.lastbamboo</groupId>
-            <artifactId>lastbamboo-common-util</artifactId>
+            <artifactId>lastbamboo-common-util-common</artifactId>
             </dependency>
      
         <dependency>
