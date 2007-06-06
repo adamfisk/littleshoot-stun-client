@@ -27,11 +27,6 @@ public class StunClientIoHandler extends AbstractStunIoHandler
     public void sessionOpened(final IoSession session)
         {
         LOG.debug("Session opened...");
-
-        // Write a binding request.
-        //final StunMessage message = 
-          //  this.m_messageFactory.createBindingRequest();
-        //session.write(message);
         }
 
     public void sessionClosed(final IoSession session)

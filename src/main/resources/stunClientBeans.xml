@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+
+    <!--
+        The class for tracking STUN transactions.
+    -->
+    <bean id="stunTransactionTracker"
+        class="org.lastbamboo.common.stun.stack.transaction.StunTransactionTrackerImpl">
+        </bean>
+        
+    <!--
+        The class for creating STUN transactions.
+    -->
+    <bean id="stunTransactionFactory"
+        class="org.lastbamboo.common.stun.stack.transaction.StunTransactionFactoryImpl">
+        </bean>     
+       
+    <!--
+        The class for processing read STUN messages.
+    --> 
+    <bean id="stunClientMessageVisitorFactory"
+        class="org.lastbamboo.common.stun.client.StunClientMessageVisitorFactory">
+        <constructor-arg><ref local="stunTransactionTracker"/></constructor-arg>
+        </bean>
+    
+    <!--
+        The class for creating new STUN clients.  
+        NOTE: It's possible for this to throw an exception resolving the 
+        server address.        
+    -->
+    <bean id="stunClientFactory"
+        class="org.lastbamboo.common.stun.client.StunClientFactoryImpl">
+        <constructor-arg><ref local="stunTransactionFactory"/></constructor-arg>
+        <constructor-arg><ref local="stunClientMessageVisitorFactory"/></constructor-arg>
+        <constructor-arg><value>stun01.sipphone.com</value></constructor-arg>
+        </bean>
+    </beans>

@@ -3,8 +3,10 @@ package org.lastbamboo.common.stun.client;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.id.uuid.UUID;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.mina.common.ConnectFuture;
@@ -16,22 +18,24 @@ import org.apache.mina.filter.codec.ProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolEncoder;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
 import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
-import org.lastbamboo.common.stun.stack.BindingResponseListener;
+import org.lastbamboo.common.stun.stack.decoder.StunMessageDecodingState;
+import org.lastbamboo.common.stun.stack.encoder.StunEncoder;
+import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.BindingResponse;
-import org.lastbamboo.common.stun.stack.message.StunDecoder;
-import org.lastbamboo.common.stun.stack.message.StunEncoder;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
-import org.lastbamboo.common.stun.stack.message.StunMessageFactory;
 import org.lastbamboo.common.stun.stack.message.StunMessageFactoryImpl;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 import org.lastbamboo.common.stun.stack.message.attributes.StunAttributesFactory;
 import org.lastbamboo.common.stun.stack.message.attributes.StunAttributesFactoryImpl;
+import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactory;
+import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.util.NetworkUtils;
+import org.lastbamboo.common.util.mina.StateMachineProtocolDecoder;
 
 /**
  * STUN client implementation for UDP STUN messages. 
  */
-public class UdpStunClient implements StunClient, BindingResponseListener
+public class UdpStunClient implements StunClient, StunTransactionListener
     {
 
     /**
@@ -42,10 +46,6 @@ public class UdpStunClient implements StunClient, BindingResponseListener
     private final Log LOG = LogFactory.getLog(UdpStunClient.class);
     
     private final InetAddress m_serverAddress;
-    
-    private final Object m_mappedAddressLock = new Object();
-
-    private BindingResponse m_bindingResponse;
 
     private final DatagramConnector m_connector;
 
@@ -55,21 +55,30 @@ public class UdpStunClient implements StunClient, BindingResponseListener
 
     private final DatagramConnectorConfig m_connectorConfig;
 
-    private final StunMessage m_bindingRequest;
+    private final Map<InetSocketAddress, ConnectFuture> m_addressMap =
+        new ConcurrentHashMap<InetSocketAddress, ConnectFuture>();
 
-    private ConnectFuture m_connectFuture;
+    private StunMessageFactoryImpl m_messageFactory;
 
+    private final StunTransactionFactory m_transactionFactory;
+    
+    private final Map<UUID, StunMessage> m_idsToResponses =
+        new ConcurrentHashMap<UUID, StunMessage>();
+    
     /**
      * Creates a new STUN client.  This will connect on the default STUN port
      * of 3478.
      * 
+     * @param transactionFactory The factory for creating STUN transactions.
+     * @param messageVisitorFactory Factory for creating message visitors.
      * @param serverAddress The address of the STUN server.
      */
-    public UdpStunClient(final InetAddress serverAddress)
+    public UdpStunClient(final StunTransactionFactory transactionFactory,
+        final StunMessageVisitorFactory messageVisitorFactory,
+        final InetAddress serverAddress)
         {
-        this.m_serverAddress = serverAddress;
-        final StunMessageVisitorFactory visitorFactory = 
-            new StunClientMessageVisitorFactory(this);
+        m_transactionFactory = transactionFactory;
+        m_serverAddress = serverAddress;
         
         m_connector = new DatagramConnector();
         m_connectorConfig = new DatagramConnectorConfig();
@@ -79,25 +88,30 @@ public class UdpStunClient implements StunClient, BindingResponseListener
         final StunAttributesFactory attributesFactory =
             new StunAttributesFactoryImpl();
         
-        final StunMessageFactory messageFactory = 
-            new StunMessageFactoryImpl(attributesFactory);
-        
-        m_ioHandler = new StunClientIoHandler(visitorFactory);
+        m_ioHandler = new StunClientIoHandler(messageVisitorFactory);
         
         final ProtocolEncoder encoder = new StunEncoder();
-        final ProtocolDecoder decoder = new StunDecoder(messageFactory);
+        final ProtocolDecoder decoder = 
+            new StateMachineProtocolDecoder(new StunMessageDecodingState());
         final ProtocolCodecFilter stunFilter = 
             new ProtocolCodecFilter(encoder, decoder);
         m_connectorConfig.getFilterChain().addLast("to-stun", stunFilter);
         
-        // This class will retransmit the same request multiple times because
-        // it's being sent unreliably.  All of these requests will be 
-        // identical, using the same transaction ID.
-        m_bindingRequest =  messageFactory.createBindingRequest();
+        m_messageFactory = new StunMessageFactoryImpl(attributesFactory);
         }
 
     public InetSocketAddress getPublicAddress(final int port)
         {
+        // This method will retransmit the same request multiple times because
+        // it's being sent unreliably.  All of these requests will be 
+        // identical, using the same transaction ID.
+        final BindingRequest bindingRequest = 
+            m_messageFactory.createBindingRequest();
+        
+        final UUID id = bindingRequest.getTransactionId();
+        
+        this.m_transactionFactory.createClientTransaction(bindingRequest, this);
+        
         final InetSocketAddress localAddress = getLocalAddress(port); 
         int requests = 0;
         
@@ -107,11 +121,11 @@ public class UdpStunClient implements StunClient, BindingResponseListener
         // the RTO.
         final long rto = 100L;
         long waitTime = 0L;
-        synchronized (this.m_mappedAddressLock)
+        synchronized (bindingRequest)
             {
-            while (m_bindingResponse == null && requests < 7)
+            while (!m_idsToResponses.containsKey(id) && requests < 7)
                 {
-                waitIfNoResponse(waitTime);
+                waitIfNoResponse(bindingRequest, waitTime);
                 
                 // See draft-ietf-behave-rfc3489bis-06.txt section 7.1.  We
                 // continually send the same request until we receive a 
@@ -119,7 +133,7 @@ public class UdpStunClient implements StunClient, BindingResponseListener
                 // an expanding interval between requests based on the 
                 // estimated round-trip-time to the server.  This is because
                 // some requests can be lost with UDP.
-                requestMappedAddress(localAddress);
+                requestMappedAddress(bindingRequest, localAddress);
                 
                 // Wait a little longer with each send.
                 waitTime = (2 * waitTime) + rto;
@@ -130,26 +144,29 @@ public class UdpStunClient implements StunClient, BindingResponseListener
             // Now we wait for 1.6 seconds after the last request was sent.
             // If we still don't receive a response, then the transaction 
             // has failed.  
-            waitIfNoResponse(1600);
+            waitIfNoResponse(bindingRequest, 1600);
             }
         
         
-        if (this.m_bindingResponse != null)
+        if (m_idsToResponses.containsKey(id))
             {
-            return this.m_bindingResponse.getMappedAddress();
+            final BindingResponse response = 
+                (BindingResponse) this.m_idsToResponses.get(id);
+            return response.getMappedAddress();
             }
         return null;
         }
 
-    private void waitIfNoResponse(final long waitTime)
+    private void waitIfNoResponse(final StunMessage request, 
+        final long waitTime)
         {
         LOG.debug("Waiting "+waitTime+" milliseconds...");
         if (waitTime == 0L) return;
-        if (m_bindingResponse == null)
+        if (!m_idsToResponses.containsKey(request.getTransactionId()))
             {
             try
                 {
-                this.m_mappedAddressLock.wait(waitTime);
+                request.wait(waitTime);
                 }
             catch (final InterruptedException e)
                 {
@@ -158,34 +175,42 @@ public class UdpStunClient implements StunClient, BindingResponseListener
             }
         }
 
-    private void requestMappedAddress(final InetSocketAddress localAddress)
+    private void requestMappedAddress(final StunMessage bindingRequest, 
+        final InetSocketAddress localAddress)
         {
         LOG.debug("Requesting mapped address...");
-        
-        // If we're already "connected", use the existing session.
-        if (this.m_connectFuture != null && this.m_connectFuture.isConnected())
+        final ConnectFuture future = this.m_addressMap.get(localAddress);
+        if (future == null)
             {
-            final IoSession session = m_connectFuture.getSession();
-            session.write(m_bindingRequest);
-            }
-        
-        // Otherwise, it's probably the first message, so create the UDP
-        // client and connect it to the server.
-        else
-            {
-            this.m_connectFuture = 
+            LOG.debug("Creating new connect future for address: "+localAddress);
+            final ConnectFuture connectFuture = 
                 m_connector.connect(m_stunServer, localAddress, m_ioHandler, 
                     m_connectorConfig);
             final IoFutureListener futureListener = new IoFutureListener()
                 {
-                public void operationComplete(final IoFuture future)
+                public void operationComplete(final IoFuture ioFuture)
                     {
-                    final IoSession session = future.getSession();
-                    session.write(m_bindingRequest);
+                    m_addressMap.put(localAddress, connectFuture);
+                    final IoSession session = ioFuture.getSession();
+                    session.write(bindingRequest);
                     }
                 };
-            this.m_connectFuture.addListener(futureListener);
+            connectFuture.addListener(futureListener);
             }
+        
+        
+        // If we're already "connected", use the existing session.
+        else if (future.isConnected())
+            {
+            LOG.debug("Found future for address: "+localAddress);
+            final IoSession session = future.getSession();
+            session.write(bindingRequest);
+            }
+        else
+            {
+            LOG.warn("Future is not connected: "+future);
+            }
+            
         }
 
     private InetSocketAddress getLocalAddress(int port)
@@ -201,26 +226,22 @@ public class UdpStunClient implements StunClient, BindingResponseListener
             }
         }
 
-    public void onBindingResponse(final BindingResponse response)
+    public void onTransactionFailed(final StunMessage request)
         {
-        final byte[] responseTransactionId = response.getTransactionId();
-        final byte[] requestTransactionId = 
-            this.m_bindingRequest.getTransactionId();
-        if (!Arrays.equals(responseTransactionId, requestTransactionId))
+        synchronized (request)
             {
-            // This should never happen because we only have a single
-            // request per visitor.
-            LOG.error("Unexpected transaction ID!!");
+            request.notify();
             }
-        else
-            {
-            this.m_bindingResponse = response;
-            }
+        }
 
-        synchronized (this.m_mappedAddressLock)
+    public void onTransactionSucceeded(final StunMessage request, 
+        final StunMessage response)
+        {
+        synchronized (request)
             {
-            LOG.debug("Got binding response, notifying...");
-            this.m_mappedAddressLock.notify();
+            // TODO: This cast is unfortunate.  Anything better?
+            this.m_idsToResponses.put(request.getTransactionId(), response);
+            request.notify();
             }
         }
 
