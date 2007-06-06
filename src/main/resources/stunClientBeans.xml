@@ -14,6 +14,7 @@
     -->
     <bean id="stunTransactionFactory"
         class="org.lastbamboo.common.stun.stack.transaction.StunTransactionFactoryImpl">
+        <constructor-arg><ref local="stunTransactionTracker"/></constructor-arg>
         </bean>     
        
     <!--
