@@ -3,8 +3,12 @@ package org.lastbamboo.common.stun.client;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.BindingResponse;
+import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
+import org.lastbamboo.common.stun.stack.message.turn.AllocateRequest;
+import org.lastbamboo.common.stun.stack.message.turn.DataIndication;
+import org.lastbamboo.common.stun.stack.message.turn.SendIndication;
+import org.lastbamboo.common.stun.stack.message.turn.SuccessfulAllocateResponse;
 import org.lastbamboo.common.stun.stack.transaction.StunClientTransaction;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 
@@ -34,7 +38,7 @@ public class StunClientMessageVisitor implements StunMessageVisitor
         LOG.error("Should not receive binding request on client");
         }
 
-    public void visitBindingResponse(final BindingResponse response)
+    public void visitSuccessfulBindingResponse(final SuccessfulBindingResponse response)
         {
         if (LOG.isDebugEnabled())
             {
@@ -43,7 +47,7 @@ public class StunClientMessageVisitor implements StunMessageVisitor
         notifyTransaction(response);
         }
     
-    private void notifyTransaction(final BindingResponse response)
+    private void notifyTransaction(final SuccessfulBindingResponse response)
         {
         final StunClientTransaction ct = 
             this.m_transactionTracker.getClientTransaction(response);
@@ -58,6 +62,30 @@ public class StunClientMessageVisitor implements StunMessageVisitor
             }
         
         response.accept(ct);
+        }
+
+    public void visitAllocateRequest(AllocateRequest request)
+        {
+        // TODO Auto-generated method stub
+        
+        }
+
+    public void visitDataIndication(DataIndication data)
+        {
+        // TODO Auto-generated method stub
+        
+        }
+
+    public void visitSendIndication(SendIndication request)
+        {
+        // TODO Auto-generated method stub
+        
+        }
+
+    public void visitSuccessfulAllocateResponse(SuccessfulAllocateResponse response)
+        {
+        // TODO Auto-generated method stub
+        
         }
 
     }

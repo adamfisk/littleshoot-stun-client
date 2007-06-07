@@ -19,14 +19,11 @@ import org.apache.mina.filter.codec.ProtocolEncoder;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
 import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.lastbamboo.common.stun.stack.decoder.StunMessageDecodingState;
-import org.lastbamboo.common.stun.stack.encoder.StunEncoder;
+import org.lastbamboo.common.stun.stack.encoder.StunMessageEncoder;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.BindingResponse;
+import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
-import org.lastbamboo.common.stun.stack.message.StunMessageFactoryImpl;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
-import org.lastbamboo.common.stun.stack.message.attributes.StunAttributesFactory;
-import org.lastbamboo.common.stun.stack.message.attributes.StunAttributesFactoryImpl;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactory;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.util.NetworkUtils;
@@ -58,8 +55,6 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     private final Map<InetSocketAddress, ConnectFuture> m_addressMap =
         new ConcurrentHashMap<InetSocketAddress, ConnectFuture>();
 
-    private StunMessageFactoryImpl m_messageFactory;
-
     private final StunTransactionFactory m_transactionFactory;
     
     private final Map<UUID, StunMessage> m_idsToResponses =
@@ -85,19 +80,14 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         
         m_stunServer = new InetSocketAddress(this.m_serverAddress, STUN_PORT);
         
-        final StunAttributesFactory attributesFactory =
-            new StunAttributesFactoryImpl();
-        
         m_ioHandler = new StunClientIoHandler(messageVisitorFactory);
         
-        final ProtocolEncoder encoder = new StunEncoder();
+        final ProtocolEncoder encoder = new StunMessageEncoder();
         final ProtocolDecoder decoder = 
             new StateMachineProtocolDecoder(new StunMessageDecodingState());
         final ProtocolCodecFilter stunFilter = 
             new ProtocolCodecFilter(encoder, decoder);
         m_connectorConfig.getFilterChain().addLast("to-stun", stunFilter);
-        
-        m_messageFactory = new StunMessageFactoryImpl(attributesFactory);
         }
 
     public InetSocketAddress getPublicAddress(final int port)
@@ -105,8 +95,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         // This method will retransmit the same request multiple times because
         // it's being sent unreliably.  All of these requests will be 
         // identical, using the same transaction ID.
-        final BindingRequest bindingRequest = 
-            m_messageFactory.createBindingRequest();
+        final BindingRequest bindingRequest = new BindingRequest();
         
         final UUID id = bindingRequest.getTransactionId();
         
@@ -150,8 +139,10 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         
         if (m_idsToResponses.containsKey(id))
             {
-            final BindingResponse response = 
-                (BindingResponse) this.m_idsToResponses.get(id);
+            // TODO: This cast is unfortunate.  Anything better?  What can
+            // we do here?  Any generics solution?
+            final SuccessfulBindingResponse response = 
+                (SuccessfulBindingResponse) this.m_idsToResponses.get(id);
             return response.getMappedAddress();
             }
         return null;
@@ -239,7 +230,6 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         {
         synchronized (request)
             {
-            // TODO: This cast is unfortunate.  Anything better?
             this.m_idsToResponses.put(request.getTransactionId(), response);
             request.notify();
             }
