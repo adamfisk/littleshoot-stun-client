@@ -19,11 +19,11 @@ import org.apache.mina.filter.codec.ProtocolEncoder;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
 import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.lastbamboo.common.stun.stack.decoder.StunMessageDecodingState;
-import org.lastbamboo.common.stun.stack.encoder.StunMessageEncoder;
+import org.lastbamboo.common.stun.stack.encoder.StunProtocolEncoder;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
+import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactory;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.util.NetworkUtils;
@@ -82,7 +82,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         
         m_ioHandler = new StunClientIoHandler(messageVisitorFactory);
         
-        final ProtocolEncoder encoder = new StunMessageEncoder();
+        final ProtocolEncoder encoder = new StunProtocolEncoder();
         final ProtocolDecoder decoder = 
             new StateMachineProtocolDecoder(new StunMessageDecodingState());
         final ProtocolCodecFilter stunFilter = 
@@ -181,8 +181,12 @@ public class UdpStunClient implements StunClient, StunTransactionListener
                 {
                 public void operationComplete(final IoFuture ioFuture)
                     {
-                    m_addressMap.put(localAddress, connectFuture);
                     final IoSession session = ioFuture.getSession();
+                    if (!session.isConnected())
+                        {
+                        return;
+                        }
+                    m_addressMap.put(localAddress, connectFuture);
                     session.write(bindingRequest);
                     }
                 };

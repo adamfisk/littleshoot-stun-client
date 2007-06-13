@@ -6,6 +6,8 @@ import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
 import org.lastbamboo.common.stun.stack.message.turn.AllocateRequest;
+import org.lastbamboo.common.stun.stack.message.turn.ConnectRequest;
+import org.lastbamboo.common.stun.stack.message.turn.ConnectionStatusIndication;
 import org.lastbamboo.common.stun.stack.message.turn.DataIndication;
 import org.lastbamboo.common.stun.stack.message.turn.SendIndication;
 import org.lastbamboo.common.stun.stack.message.turn.SuccessfulAllocateResponse;
@@ -83,6 +85,18 @@ public class StunClientMessageVisitor implements StunMessageVisitor
         }
 
     public void visitSuccessfulAllocateResponse(SuccessfulAllocateResponse response)
+        {
+        // TODO Auto-generated method stub
+        
+        }
+
+    public void visitConnectRequest(ConnectRequest request)
+        {
+        // TODO Auto-generated method stub
+        
+        }
+
+    public void visitConnectionStatusIndication(ConnectionStatusIndication indication)
         {
         // TODO Auto-generated method stub
         
