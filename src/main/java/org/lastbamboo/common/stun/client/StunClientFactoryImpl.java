@@ -67,8 +67,14 @@ public class StunClientFactoryImpl implements StunClientFactory
             }
         catch (final UnknownHostException e)
             {
-            LOG.error("Could not resolve server address");
-            throw new IllegalArgumentException("Could not get address", e);
+            // This probably means we're offline.
+            LOG.error("Could not resolve server address", e);
+            
+            // We just allow the address to be null.  Otherwise, tests will
+            // fail when we're offline, not to mention this is called at
+            // spring bean creation time, so we want to avoid throwing
+            // exceptions.
+            return null;
             }
         }
 
