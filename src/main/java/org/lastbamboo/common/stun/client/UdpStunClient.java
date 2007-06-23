@@ -10,16 +10,11 @@ import org.apache.commons.id.uuid.UUID;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.mina.common.ConnectFuture;
-import org.apache.mina.common.IoFuture;
-import org.apache.mina.common.IoFutureListener;
 import org.apache.mina.common.IoSession;
+import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.filter.codec.ProtocolDecoder;
-import org.apache.mina.filter.codec.ProtocolEncoder;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
-import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
-import org.lastbamboo.common.stun.stack.decoder.StunMessageDecodingState;
-import org.lastbamboo.common.stun.stack.encoder.StunProtocolEncoder;
+import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
@@ -27,7 +22,6 @@ import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactory;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.util.NetworkUtils;
-import org.lastbamboo.common.util.mina.StateMachineProtocolDecoder;
 
 /**
  * STUN client implementation for UDP STUN messages. 
@@ -50,10 +44,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
 
     private final StunClientIoHandler m_ioHandler;
 
-    private final DatagramConnectorConfig m_connectorConfig;
-
-    private final Map<InetSocketAddress, ConnectFuture> m_addressMap =
-        new ConcurrentHashMap<InetSocketAddress, ConnectFuture>();
+    private final Map<InetSocketAddress, IoSession> m_addressMap =
+        new ConcurrentHashMap<InetSocketAddress, IoSession>();
 
     private final StunTransactionFactory m_transactionFactory;
     
@@ -76,18 +68,14 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         m_serverAddress = serverAddress;
         
         m_connector = new DatagramConnector();
-        m_connectorConfig = new DatagramConnectorConfig();
-        
         m_stunServer = new InetSocketAddress(this.m_serverAddress, STUN_PORT);
-        
         m_ioHandler = new StunClientIoHandler(messageVisitorFactory);
-        
-        final ProtocolEncoder encoder = new StunProtocolEncoder();
-        final ProtocolDecoder decoder = 
-            new StateMachineProtocolDecoder(new StunMessageDecodingState());
+        final ProtocolCodecFactory codecFactory = 
+            new StunProtocolCodecFactory();
         final ProtocolCodecFilter stunFilter = 
-            new ProtocolCodecFilter(encoder, decoder);
-        m_connectorConfig.getFilterChain().addLast("to-stun", stunFilter);
+            new ProtocolCodecFilter(codecFactory);
+        
+        m_connector.getFilterChain().addLast("stunFilter", stunFilter);
         }
 
     public InetSocketAddress getPublicAddress(final int port)
@@ -170,42 +158,24 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         final InetSocketAddress localAddress)
         {
         LOG.debug("Requesting mapped address...");
-        final ConnectFuture future = this.m_addressMap.get(localAddress);
-        if (future == null)
+        final IoSession session = getIoSession(localAddress);
+        session.write(bindingRequest);
+        }
+
+    private IoSession getIoSession(final InetSocketAddress localAddress)
+        {
+        final IoSession session = this.m_addressMap.get(localAddress);
+        if (session == null)
             {
             LOG.debug("Creating new connect future for address: "+localAddress);
             final ConnectFuture connectFuture = 
-                m_connector.connect(m_stunServer, localAddress, m_ioHandler, 
-                    m_connectorConfig);
-            final IoFutureListener futureListener = new IoFutureListener()
-                {
-                public void operationComplete(final IoFuture ioFuture)
-                    {
-                    final IoSession session = ioFuture.getSession();
-                    if (!session.isConnected())
-                        {
-                        return;
-                        }
-                    m_addressMap.put(localAddress, connectFuture);
-                    session.write(bindingRequest);
-                    }
-                };
-            connectFuture.addListener(futureListener);
+                m_connector.connect(m_stunServer, localAddress, m_ioHandler);
+            connectFuture.join();
+            final IoSession sess = connectFuture.getSession();
+            this.m_addressMap.put(localAddress, sess);
+            return sess;
             }
-        
-        
-        // If we're already "connected", use the existing session.
-        else if (future.isConnected())
-            {
-            LOG.debug("Found future for address: "+localAddress);
-            final IoSession session = future.getSession();
-            session.write(bindingRequest);
-            }
-        else
-            {
-            LOG.warn("Future is not connected: "+future);
-            }
-            
+        return session;
         }
 
     private InetSocketAddress getLocalAddress(int port)

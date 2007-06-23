@@ -59,7 +59,7 @@ public class StunClientFactoryImpl implements StunClientFactory
         m_serverAddress = serverAddress;
         }
 
-    private static InetAddress getInetAddress(String serverAddress)
+    private static InetAddress getInetAddress(final String serverAddress)
         {
         try
             {
