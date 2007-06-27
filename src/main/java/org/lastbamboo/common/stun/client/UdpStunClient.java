@@ -145,6 +145,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             {
             try
                 {
+                LOG.debug("Actually waiting...");
                 request.wait(waitTime);
                 }
             catch (final InterruptedException e)
