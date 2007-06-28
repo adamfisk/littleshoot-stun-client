@@ -179,7 +179,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         return session;
         }
 
-    private InetSocketAddress getLocalAddress(int port)
+    private InetSocketAddress getLocalAddress(final int port)
         {
         try
             {
