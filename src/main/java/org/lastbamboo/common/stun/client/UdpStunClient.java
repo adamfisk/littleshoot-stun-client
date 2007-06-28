@@ -36,8 +36,6 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     
     private final Log LOG = LogFactory.getLog(UdpStunClient.class);
     
-    private final InetAddress m_serverAddress;
-
     private final DatagramConnector m_connector;
 
     private final InetSocketAddress m_stunServer;
@@ -65,10 +63,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         final InetAddress serverAddress)
         {
         m_transactionFactory = transactionFactory;
-        m_serverAddress = serverAddress;
-        
         m_connector = new DatagramConnector();
-        m_stunServer = new InetSocketAddress(this.m_serverAddress, STUN_PORT);
+        m_stunServer = new InetSocketAddress(serverAddress, STUN_PORT);
         m_ioHandler = new StunClientIoHandler(messageVisitorFactory);
         final ProtocolCodecFactory codecFactory = 
             new StunProtocolCodecFactory();
