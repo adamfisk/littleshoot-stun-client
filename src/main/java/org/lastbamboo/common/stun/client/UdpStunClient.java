@@ -1,80 +1,63 @@
 package org.lastbamboo.common.stun.client;
 
-import java.net.InetAddress;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.nio.channels.DatagramChannel;
 
 import org.apache.commons.id.uuid.UUID;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.mina.common.ConnectFuture;
+import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoSession;
-import org.apache.mina.filter.codec.ProtocolCodecFactory;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
-import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.StunMessage;
-import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactory;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
-import org.lastbamboo.common.util.NetworkUtils;
 
 /**
- * STUN client implementation for UDP STUN messages. 
+ * STUN client implementation for ICE UDP. 
  */
-public class UdpStunClient implements StunClient, StunTransactionListener
+public class UdpStunClient extends AbstractStunClient
     {
-
-    /**
-     * The default STUN port.
-     */
-    private static final int STUN_PORT = 3478;
     
     private final Log LOG = LogFactory.getLog(UdpStunClient.class);
     
-    private final DatagramConnector m_connector;
-
-    private final InetSocketAddress m_stunServer;
-
-    private final StunClientIoHandler m_ioHandler;
-
-    private final Map<InetSocketAddress, IoSession> m_addressMap =
-        new ConcurrentHashMap<InetSocketAddress, IoSession>();
-
-    private final StunTransactionFactory m_transactionFactory;
-    
-    private final Map<UUID, StunMessage> m_idsToResponses =
-        new ConcurrentHashMap<UUID, StunMessage>();
     
     /**
-     * Creates a new STUN client.  This will connect on the default STUN port
-     * of 3478.
-     * 
-     * @param transactionFactory The factory for creating STUN transactions.
-     * @param messageVisitorFactory Factory for creating message visitors.
-     * @param serverAddress The address of the STUN server.
+     * Creates a new STUN client for ICE processing.  This client is capable
+     * of obtaining "server reflexive" and "host" candidates.  We don't use
+     * relaying for UDP, so this does not currently support generating
+     * "relayed" candidates.
      */
-    public UdpStunClient(final StunTransactionFactory transactionFactory,
-        final StunMessageVisitorFactory messageVisitorFactory,
-        final InetAddress serverAddress)
+    public UdpStunClient()
         {
-        m_transactionFactory = transactionFactory;
-        m_connector = new DatagramConnector();
-        m_stunServer = new InetSocketAddress(serverAddress, STUN_PORT);
-        m_ioHandler = new StunClientIoHandler(messageVisitorFactory);
-        final ProtocolCodecFactory codecFactory = 
-            new StunProtocolCodecFactory();
-        final ProtocolCodecFilter stunFilter = 
-            new ProtocolCodecFilter(codecFactory);
-        
-        m_connector.getFilterChain().addLast("stunFilter", stunFilter);
+        super();
+        }
+    
+    /**
+     * Creates a new STUN client that connects to the specified STUN server.
+     * 
+     * @param stunServerAddress The address of the STUN server to connect to.
+     */
+    public UdpStunClient(final InetSocketAddress stunServerAddress)
+        {
+        super(stunServerAddress, 10*1000);
         }
 
-    public InetSocketAddress getPublicAddress(final int port)
+    public UdpStunClient(InetSocketAddress localAddress, 
+        final InetSocketAddress stunServerAddress)
+        {
+        super(localAddress, stunServerAddress, 10*1000);
+        }
+
+    protected IoConnector createConnector(final int connectTimeout)
+        {
+        final DatagramConnector connector = new DatagramConnector();
+        connector.getDefaultConfig().getSessionConfig().setReuseAddress(true);
+        return connector;
+        }
+    
+    public SuccessfulBindingResponse getBindingResponse()
         {
         // This method will retransmit the same request multiple times because
         // it's being sent unreliably.  All of these requests will be 
@@ -85,7 +68,6 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         
         this.m_transactionFactory.createClientTransaction(bindingRequest, this);
         
-        final InetSocketAddress localAddress = getLocalAddress(port); 
         int requests = 0;
         
         // Use an RTO of 100ms, as discussed in 
@@ -106,7 +88,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
                 // an expanding interval between requests based on the 
                 // estimated round-trip-time to the server.  This is because
                 // some requests can be lost with UDP.
-                requestMappedAddress(bindingRequest, localAddress);
+                m_ioSession.write(bindingRequest);
                 
                 // Wait a little longer with each send.
                 waitTime = (2 * waitTime) + rto;
@@ -123,88 +105,54 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         
         if (m_idsToResponses.containsKey(id))
             {
-            // TODO: This cast is unfortunate.  Anything better?  What can
-            // we do here?  Any generics solution?
+            // TODO: This cast is unfortunate.  Anything better?  Any 
+            // generics solution?
             final SuccessfulBindingResponse response = 
                 (SuccessfulBindingResponse) this.m_idsToResponses.get(id);
-            return response.getMappedAddress();
+            
+            return response;
             }
         return null;
         }
-
-    private void waitIfNoResponse(final StunMessage request, 
-        final long waitTime)
+    
+    protected InetSocketAddress getLocalAddress(final IoSession ioSession)
         {
-        LOG.debug("Waiting "+waitTime+" milliseconds...");
-        if (waitTime == 0L) return;
-        if (!m_idsToResponses.containsKey(request.getTransactionId()))
-            {
-            try
-                {
-                LOG.debug("Actually waiting...");
-                request.wait(waitTime);
-                }
-            catch (final InterruptedException e)
-                {
-                LOG.error("Unexpected interrupt", e);
-                }
-            }
-        }
-
-    private void requestMappedAddress(final StunMessage bindingRequest, 
-        final InetSocketAddress localAddress)
-        {
-        LOG.debug("Requesting mapped address...");
-        final IoSession session = getIoSession(localAddress);
-        session.write(bindingRequest);
-        }
-
-    private IoSession getIoSession(final InetSocketAddress localAddress)
-        {
-        final IoSession session = this.m_addressMap.get(localAddress);
-        if (session == null)
-            {
-            LOG.debug("Creating new connect future for address: "+localAddress);
-            final ConnectFuture connectFuture = 
-                m_connector.connect(m_stunServer, localAddress, m_ioHandler);
-            connectFuture.join();
-            final IoSession sess = connectFuture.getSession();
-            this.m_addressMap.put(localAddress, sess);
-            return sess;
-            }
-        return session;
-        }
-
-    private InetSocketAddress getLocalAddress(final int port)
-        {
+        // This insanity is needed because IoSession.getLocalAddress does
+        // not, in fact, return the local address!!
         try
             {
-            return new InetSocketAddress(NetworkUtils.getLocalHost(), port);
+            final Method getChannel = 
+                ioSession.getClass().getDeclaredMethod("getChannel", new Class[0]);
+            getChannel.setAccessible(true);
+            
+            final DatagramChannel channel = 
+                (DatagramChannel) getChannel.invoke(ioSession, new Object[0]);
+            return (InetSocketAddress) channel.socket().getLocalSocketAddress();
             }
-        catch (final UnknownHostException e)
+        catch (SecurityException e)
             {
-            LOG.error("Could not find host", e);
-            return null;
+            LOG.error("Error accessing local address", e);
             }
+        catch (NoSuchMethodException e)
+            {
+            LOG.error("Error accessing local address", e);
+            }
+        catch (IllegalAccessException e)
+            {
+            LOG.error("Error accessing local address", e);
+            }
+        catch (InvocationTargetException e)
+            {
+            LOG.error("Error accessing local address", e);
+            }
+
+        return null;
         }
 
-    public void onTransactionFailed(final StunMessage request)
+    public InetSocketAddress getRelayAddress()
         {
-        synchronized (request)
-            {
-            request.notify();
-            }
+        // We don't support UDP relays at this time.
+        LOG.warn("Attempted to get a UDP relay!!");
+        return null;
         }
-
-    public void onTransactionSucceeded(final StunMessage request, 
-        final StunMessage response)
-        {
-        synchronized (request)
-            {
-            this.m_idsToResponses.put(request.getTransactionId(), response);
-            request.notify();
-            }
-        }
-
-    
     }

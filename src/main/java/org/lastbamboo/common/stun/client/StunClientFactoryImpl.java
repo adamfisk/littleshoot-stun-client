@@ -80,14 +80,16 @@ public class StunClientFactoryImpl implements StunClientFactory
 
     public StunClient createUdpClient()
         {
-        return new UdpStunClient(this.m_transactionFactory, 
-            this.m_messageVisitorFactory, this.m_serverAddress);
+        //return new UdpStunClient(this.m_transactionFactory, 
+          //  this.m_messageVisitorFactory, this.m_serverAddress);
+        return null;
         }
 
     public StunClient createUdpClient(final InetAddress stunServerAddress)
         {
-        return new UdpStunClient(this.m_transactionFactory, 
-            this.m_messageVisitorFactory, stunServerAddress);
+        //return new UdpStunClient(this.m_transactionFactory, 
+          //  this.m_messageVisitorFactory, stunServerAddress);
+        return null;
         }
 
     }
