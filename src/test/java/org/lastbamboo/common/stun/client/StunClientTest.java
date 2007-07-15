@@ -24,17 +24,12 @@ public class StunClientTest extends TestCase
         {
         final InetAddress address = 
             InetAddress.getByName("stun01.sipphone.com");
+        final InetSocketAddress stunServerAddress = 
+            new InetSocketAddress(address, 3478);
         
-        final StunTransactionTracker transactionTracker =
-            new StunTransactionTrackerImpl();
-        final StunTransactionFactory transactionFactory = 
-            new StunTransactionFactoryImpl(transactionTracker);
-        final StunClientMessageVisitorFactory messageVisitorFactory =
-            new StunClientMessageVisitorFactory(transactionTracker);
-        
-        final StunClient client = new UdpStunClient(transactionFactory, 
-            messageVisitorFactory, address);
-        final InetSocketAddress publicAddress = client.getPublicAddress(4839);
+        final StunClient client = new UdpStunClient(stunServerAddress);
+        final InetSocketAddress publicAddress = 
+            client.getServerReflexiveAddress();
         
         LOG.debug("Got address: "+publicAddress);
         assertNotNull(publicAddress);
