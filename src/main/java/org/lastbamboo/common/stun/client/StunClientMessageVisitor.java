@@ -3,6 +3,7 @@ package org.lastbamboo.common.stun.client;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
+import org.lastbamboo.common.stun.stack.message.NullStunMessage;
 import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
 import org.lastbamboo.common.stun.stack.message.turn.AllocateRequest;
@@ -17,7 +18,7 @@ import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 /**
  * A visitor for STUN messages on STUN clients. 
  */
-public class StunClientMessageVisitor implements StunMessageVisitor
+public class StunClientMessageVisitor implements StunMessageVisitor<Object>
     {
 
     private static final Log LOG = 
@@ -35,21 +36,17 @@ public class StunClientMessageVisitor implements StunMessageVisitor
         m_transactionTracker = transactionTracker;
         }
 
-    public void visitBindingRequest(final BindingRequest binding)
-        {
-        LOG.error("Should not receive binding request on client");
-        }
-
-    public void visitSuccessfulBindingResponse(final SuccessfulBindingResponse response)
+    public Object visitSuccessfulBindingResponse(
+        final SuccessfulBindingResponse response)
         {
         if (LOG.isDebugEnabled())
             {
             LOG.debug("Received binding response: "+response);
             }
-        notifyTransaction(response);
+        return notifyTransaction(response);
         }
     
-    private void notifyTransaction(final SuccessfulBindingResponse response)
+    private Object notifyTransaction(final SuccessfulBindingResponse response)
         {
         final StunClientTransaction ct = 
             this.m_transactionTracker.getClientTransaction(response);
@@ -60,46 +57,52 @@ public class StunClientMessageVisitor implements StunMessageVisitor
             // This will happen fairly frequently with UDP because messages
             // are retransmitted in case any are lost.
             LOG.debug("No matching transaction for response: "+response);
-            return;
+            return null;
             }
         
-        response.accept(ct);
+        return response.accept(ct);
+        }
+    
+
+    public Object visitBindingRequest(final BindingRequest binding)
+        {
+        LOG.error("Should not receive binding request on client");
+        return null;
         }
 
-    public void visitAllocateRequest(AllocateRequest request)
+    public Object visitAllocateRequest(AllocateRequest request)
         {
-        // TODO Auto-generated method stub
-        
+        return null;
         }
 
-    public void visitDataIndication(DataIndication data)
+    public Object visitDataIndication(DataIndication data)
         {
-        // TODO Auto-generated method stub
-        
+        return null;
         }
 
-    public void visitSendIndication(SendIndication request)
+    public Object visitSendIndication(SendIndication request)
         {
-        // TODO Auto-generated method stub
-        
+        return null;
         }
 
-    public void visitSuccessfulAllocateResponse(SuccessfulAllocateResponse response)
+    public Object visitSuccessfulAllocateResponse(SuccessfulAllocateResponse response)
         {
-        // TODO Auto-generated method stub
-        
+        return null;
         }
 
-    public void visitConnectRequest(ConnectRequest request)
+    public Object visitConnectRequest(ConnectRequest request)
         {
-        // TODO Auto-generated method stub
-        
+        return null;
         }
 
-    public void visitConnectionStatusIndication(ConnectionStatusIndication indication)
+    public Object visitConnectionStatusIndication(ConnectionStatusIndication indication)
         {
-        // TODO Auto-generated method stub
-        
+        return null;
+        }
+
+    public Object visitNullMessage(final NullStunMessage message)
+        {
+        return null;
         }
 
     }

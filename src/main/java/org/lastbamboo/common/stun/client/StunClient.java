@@ -3,8 +3,8 @@ package org.lastbamboo.common.stun.client;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
-import org.apache.mina.common.IoSession;
-import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
+import org.lastbamboo.common.stun.stack.message.BindingRequest;
+import org.lastbamboo.common.stun.stack.message.StunMessage;
 
 /**
  * Interface for making STUN client requests.
@@ -47,8 +47,13 @@ public interface StunClient
      */
     InetSocketAddress getRelayAddress();
     
-    SuccessfulBindingResponse getBindingResponse();
-
-    IoSession getIoSession();
+    /**
+     * Writes a STUN binding request.
+     * 
+     * @param request The STUN binding request.
+     * @param remoteAddress The address to send the request to.
+     * @return The response message.
+     */
+    StunMessage write(BindingRequest request, InetSocketAddress remoteAddress);
 
     }

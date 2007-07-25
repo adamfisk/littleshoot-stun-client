@@ -8,7 +8,8 @@ import org.apache.mina.common.IoSession;
 import org.apache.mina.transport.socket.nio.SocketConnector;
 import org.apache.mina.transport.socket.nio.SocketConnectorConfig;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
+import org.lastbamboo.common.stun.stack.message.NullStunMessage;
+import org.lastbamboo.common.stun.stack.message.StunMessage;
 
 /**
  * STUN client implementation for ICE UDP. 
@@ -38,33 +39,6 @@ public class TcpStunClient extends AbstractStunClient
         {
         super(stunServerAddress, connectTimeout);
         }
-    
-    public SuccessfulBindingResponse getBindingResponse()
-        {
-        final BindingRequest bindingRequest = new BindingRequest();
-        final UUID id = bindingRequest.getTransactionId();
-        
-        this.m_transactionFactory.createClientTransaction(bindingRequest, this);
-        synchronized (bindingRequest)
-            {
-            m_ioSession.write(bindingRequest);
-            
-            // See draft-ietf-behave-rfc3489bis-07.txt section 7.2.2.
-            waitIfNoResponse(bindingRequest, 7900);
-            }
-        
-        
-        if (m_idsToResponses.containsKey(id))
-            {
-            // TODO: This cast is unfortunate.  Anything better?  Any 
-            // generics solution?
-            final SuccessfulBindingResponse response = 
-                (SuccessfulBindingResponse) this.m_idsToResponses.get(id);
-            return response;
-            }
-        return null;
-        }
-    
 
     @Override
     protected IoConnector createConnector(final int connectTimeout)
@@ -72,18 +46,46 @@ public class TcpStunClient extends AbstractStunClient
         final SocketConnector connector = new SocketConnector();
         final SocketConnectorConfig config = connector.getDefaultConfig();
         config.setConnectTimeout(connectTimeout);
+        config.getSessionConfig().setReuseAddress(true);
+        
         return connector;
         }
 
     @Override
-    protected InetSocketAddress getLocalAddress(final IoSession ioSession)
+    protected InetSocketAddress getLocalAddress(final IoSession session)
         {
-        return (InetSocketAddress) ioSession.getLocalAddress();
+        return (InetSocketAddress) session.getLocalAddress();
         }
 
     public InetSocketAddress getRelayAddress()
         {
         // TODO Auto-generated method stub
         return null;
+        }
+
+    public StunMessage write(final BindingRequest request, 
+        final InetSocketAddress remoteAddress)
+        {
+        final IoSession session = connect(remoteAddress);
+        final UUID id = request.getTransactionId();
+        
+        this.m_transactionFactory.createClientTransaction(request, this);
+        synchronized (request)
+            {
+            session.write(request);
+            
+            // See draft-ietf-behave-rfc3489bis-07.txt section 7.2.2.
+            waitIfNoResponse(request, 7900);
+            }
+        
+        
+        if (m_idsToResponses.containsKey(id))
+            {
+            // TODO: This cast is unfortunate.  Anything better?  Any 
+            // generics solution?
+            final StunMessage response = this.m_idsToResponses.get(id);
+            return response;
+            }
+        return new NullStunMessage();
         }
     }

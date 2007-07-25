@@ -14,7 +14,10 @@ import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
+import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
+import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
+import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactory;
@@ -37,7 +40,7 @@ public abstract class AbstractStunClient implements StunClient,
     
     private final Log LOG = LogFactory.getLog(AbstractStunClient.class);
     
-    private final IoConnector m_connector;
+    protected final IoConnector m_connector;
 
     /**
      * This is the address of the STUN server to connect to.
@@ -51,26 +54,31 @@ public abstract class AbstractStunClient implements StunClient,
     protected final Map<UUID, StunMessage> m_idsToResponses =
         new ConcurrentHashMap<UUID, StunMessage>();
 
-    protected final IoSession m_ioSession;
+    //protected final IoSession m_ioSession;
 
     private final InetSocketAddress m_localAddress;
+
+    private IoSession m_currentIoSession;
 
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
      * of obtaining "server reflexive" and "host" candidates.  We don't use
      * relaying for UDP, so this does not currently support generating
      * "relayed" candidates.
-     * 
-     * @param connector The class for creating the connection.
      */
     protected AbstractStunClient()
         {
         this(new InetSocketAddress("stun01.sipphone.com", STUN_PORT), 10*1000);
         }
 
-
-    public AbstractStunClient(final InetSocketAddress localAddress, 
-        final InetSocketAddress stunServerAddress, final int connectTimeout)
+    /**
+     * Creates a new STUN client that connects to the specified STUN server.
+     * 
+     * @param stunServerAddress The address of the STUN server to connect to.
+     * @param connectTimeout The timeout to wait for connections.
+     */
+    protected AbstractStunClient(final InetSocketAddress stunServerAddress, 
+        final int connectTimeout)
         {
         final StunTransactionTracker tracker = new StunTransactionTrackerImpl();
         m_transactionFactory = new StunTransactionFactoryImpl(tracker);
@@ -87,46 +95,58 @@ public abstract class AbstractStunClient implements StunClient,
             new ProtocolCodecFilter(codecFactory);
         
         m_connector.getFilterChain().addLast("stunFilter", stunFilter);
-        final ConnectFuture connectFuture = 
-            m_connector.connect(m_stunServerAddress, localAddress, m_ioHandler);
+        final IoSession session = connect(m_stunServerAddress); 
+            //m_connector.connect(m_stunServerAddress, m_ioHandler);
         
-        connectFuture.join();
-        this.m_ioSession = connectFuture.getSession();
-        if (localAddress == null)
-            {
-            this.m_localAddress = getLocalAddress(m_ioSession);
-            }
-        else
-            {
-            this.m_localAddress = localAddress;
-            }
+        //connectFuture.join();
+        
+        this.m_currentIoSession = session;
+        this.m_localAddress = getLocalAddress(session);
         }
-
-    /**
-     * Creates a new STUN client that connects to the specified STUN server.
-     * 
-     * @param stunServerAddress The address of the STUN server to connect to.
-     * @param connectTimeout The timeout to wait for connections.
-     */
-    protected AbstractStunClient(final InetSocketAddress stunServerAddress, 
-        final int connectTimeout)
+    
+    protected IoSession connect(final InetSocketAddress stunServerAddress)
         {
-        this(null, stunServerAddress, connectTimeout);
+        // We can't connect twice to the same 5-tuple, so check to verify we're
+        // not reconnecting to the remote host we're already connected to.
+        if (this.m_currentIoSession != null && 
+            this.m_currentIoSession.getRemoteAddress().equals(stunServerAddress))
+            {
+            return this.m_currentIoSession;
+            }
+        final ConnectFuture cf = 
+            m_connector.connect(stunServerAddress, this.m_localAddress, 
+            m_ioHandler);
+        cf.join();
+        final IoSession session = cf.getSession();
+        this.m_currentIoSession = session;
+        return session;
         }
-
 
     protected abstract IoConnector createConnector(int connectTimeout);
-    protected abstract InetSocketAddress getLocalAddress(IoSession ioSession);
+    protected abstract InetSocketAddress getLocalAddress(
+        IoSession session);
     
     public InetSocketAddress getServerReflexiveAddress()
         {
-        final SuccessfulBindingResponse response = getBindingResponse();
-        if (response == null)
-            {
-            return null;
-            }
+        final BindingRequest br = new BindingRequest();
         
-        return response.getMappedAddress();
+        // We just use the address of the public STUN server here.
+        final IoSession session = connect(this.m_stunServerAddress);
+        
+        final StunMessage message = write(br, 
+            (InetSocketAddress) session.getRemoteAddress());
+        final StunMessageVisitor<InetSocketAddress> visitor = 
+            new StunMessageVisitorAdapter<InetSocketAddress>()
+            {
+
+            public InetSocketAddress visitSuccessfulBindingResponse(
+                final SuccessfulBindingResponse response)
+                {
+                return response.getMappedAddress();
+                }
+            };
+          
+        return message.accept(visitor);
         }
     
     public InetSocketAddress getHostAddress()
@@ -137,11 +157,6 @@ public abstract class AbstractStunClient implements StunClient,
     public InetAddress getStunServerAddress()
         {
         return this.m_stunServerAddress.getAddress();
-        }
-    
-    public IoSession getIoSession() 
-        {
-        return this.m_ioSession;
         }
 
     protected void waitIfNoResponse(final StunMessage request, 

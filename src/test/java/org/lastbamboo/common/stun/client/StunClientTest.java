@@ -3,14 +3,10 @@ package org.lastbamboo.common.stun.client;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactory;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionFactoryImpl;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionTrackerImpl;
+import junit.framework.TestCase;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import junit.framework.TestCase;
 
 /**
  * Test for STUN clients.

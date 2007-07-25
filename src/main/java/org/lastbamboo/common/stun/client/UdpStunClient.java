@@ -11,8 +11,10 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
+import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
+import org.lastbamboo.common.stun.stack.message.NullStunMessage;
+import org.lastbamboo.common.stun.stack.message.StunMessage;
 
 /**
  * STUN client implementation for ICE UDP. 
@@ -44,29 +46,31 @@ public class UdpStunClient extends AbstractStunClient
         super(stunServerAddress, 10*1000);
         }
 
-    public UdpStunClient(InetSocketAddress localAddress, 
-        final InetSocketAddress stunServerAddress)
-        {
-        super(localAddress, stunServerAddress, 10*1000);
-        }
-
     protected IoConnector createConnector(final int connectTimeout)
         {
         final DatagramConnector connector = new DatagramConnector();
-        connector.getDefaultConfig().getSessionConfig().setReuseAddress(true);
+        final DatagramConnectorConfig cfg = connector.getDefaultConfig();
+        cfg.getSessionConfig().setReuseAddress(true);
+        
+        //connector.setDefaultConfig(cfg);
         return connector;
         }
     
-    public SuccessfulBindingResponse getBindingResponse()
+
+    public StunMessage write(final BindingRequest request, 
+        final InetSocketAddress remoteAddress)
         {
+        
+        // TODO: We need to somehow modify the IoSession to send the request
+        // to the specified address.
+        final IoSession session = connect(remoteAddress);
+        
         // This method will retransmit the same request multiple times because
         // it's being sent unreliably.  All of these requests will be 
         // identical, using the same transaction ID.
-        final BindingRequest bindingRequest = new BindingRequest();
+        final UUID id = request.getTransactionId();
         
-        final UUID id = bindingRequest.getTransactionId();
-        
-        this.m_transactionFactory.createClientTransaction(bindingRequest, this);
+        this.m_transactionFactory.createClientTransaction(request, this);
         
         int requests = 0;
         
@@ -76,11 +80,11 @@ public class UdpStunClient extends AbstractStunClient
         // the RTO.
         final long rto = 100L;
         long waitTime = 0L;
-        synchronized (bindingRequest)
+        synchronized (request)
             {
             while (!m_idsToResponses.containsKey(id) && requests < 7)
                 {
-                waitIfNoResponse(bindingRequest, waitTime);
+                waitIfNoResponse(request, waitTime);
                 
                 // See draft-ietf-behave-rfc3489bis-06.txt section 7.1.  We
                 // continually send the same request until we receive a 
@@ -88,7 +92,7 @@ public class UdpStunClient extends AbstractStunClient
                 // an expanding interval between requests based on the 
                 // estimated round-trip-time to the server.  This is because
                 // some requests can be lost with UDP.
-                m_ioSession.write(bindingRequest);
+                session.write(request);
                 
                 // Wait a little longer with each send.
                 waitTime = (2 * waitTime) + rto;
@@ -99,20 +103,16 @@ public class UdpStunClient extends AbstractStunClient
             // Now we wait for 1.6 seconds after the last request was sent.
             // If we still don't receive a response, then the transaction 
             // has failed.  
-            waitIfNoResponse(bindingRequest, 1600);
+            waitIfNoResponse(request, 1600);
             }
-        
         
         if (m_idsToResponses.containsKey(id))
             {
-            // TODO: This cast is unfortunate.  Anything better?  Any 
-            // generics solution?
-            final SuccessfulBindingResponse response = 
-                (SuccessfulBindingResponse) this.m_idsToResponses.get(id);
-            
+            final StunMessage response = this.m_idsToResponses.get(id);
             return response;
             }
-        return null;
+        
+        return new NullStunMessage();
         }
     
     protected InetSocketAddress getLocalAddress(final IoSession ioSession)
