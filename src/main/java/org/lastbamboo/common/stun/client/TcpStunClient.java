@@ -51,12 +51,6 @@ public class TcpStunClient extends AbstractStunClient
         return connector;
         }
 
-    @Override
-    protected InetSocketAddress getLocalAddress(final IoSession session)
-        {
-        return (InetSocketAddress) session.getLocalAddress();
-        }
-
     public InetSocketAddress getRelayAddress()
         {
         // TODO Auto-generated method stub

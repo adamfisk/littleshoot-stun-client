@@ -96,12 +96,9 @@ public abstract class AbstractStunClient implements StunClient,
         
         m_connector.getFilterChain().addLast("stunFilter", stunFilter);
         final IoSession session = connect(m_stunServerAddress); 
-            //m_connector.connect(m_stunServerAddress, m_ioHandler);
-        
-        //connectFuture.join();
         
         this.m_currentIoSession = session;
-        this.m_localAddress = getLocalAddress(session);
+        this.m_localAddress = (InetSocketAddress) session.getLocalAddress();
         }
     
     protected IoSession connect(final InetSocketAddress stunServerAddress)
@@ -123,8 +120,6 @@ public abstract class AbstractStunClient implements StunClient,
         }
 
     protected abstract IoConnector createConnector(int connectTimeout);
-    protected abstract InetSocketAddress getLocalAddress(
-        IoSession session);
     
     public InetSocketAddress getServerReflexiveAddress()
         {

@@ -1,9 +1,6 @@
 package org.lastbamboo.common.stun.client;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
-import java.nio.channels.DatagramChannel;
 
 import org.apache.commons.id.uuid.UUID;
 import org.apache.commons.logging.Log;
@@ -113,40 +110,6 @@ public class UdpStunClient extends AbstractStunClient
             }
         
         return new NullStunMessage();
-        }
-    
-    protected InetSocketAddress getLocalAddress(final IoSession ioSession)
-        {
-        // This insanity is needed because IoSession.getLocalAddress does
-        // not, in fact, return the local address!!
-        try
-            {
-            final Method getChannel = 
-                ioSession.getClass().getDeclaredMethod("getChannel", new Class[0]);
-            getChannel.setAccessible(true);
-            
-            final DatagramChannel channel = 
-                (DatagramChannel) getChannel.invoke(ioSession, new Object[0]);
-            return (InetSocketAddress) channel.socket().getLocalSocketAddress();
-            }
-        catch (SecurityException e)
-            {
-            LOG.error("Error accessing local address", e);
-            }
-        catch (NoSuchMethodException e)
-            {
-            LOG.error("Error accessing local address", e);
-            }
-        catch (IllegalAccessException e)
-            {
-            LOG.error("Error accessing local address", e);
-            }
-        catch (InvocationTargetException e)
-            {
-            LOG.error("Error accessing local address", e);
-            }
-
-        return null;
         }
 
     public InetSocketAddress getRelayAddress()
