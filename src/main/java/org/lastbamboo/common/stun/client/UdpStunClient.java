@@ -1,5 +1,6 @@
 package org.lastbamboo.common.stun.client;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import org.apache.commons.id.uuid.UUID;
@@ -12,6 +13,8 @@ import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.NullStunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
+import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
+import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 
 /**
  * STUN client implementation for ICE UDP. 
@@ -34,13 +37,32 @@ public class UdpStunClient extends AbstractStunClient
         }
     
     /**
+     * Creates a new UDP STUN client bound to the specified local address.  
+     * This is necessary for things like ICE because the client and server
+     * both need to be bound to the same local address.
+     * 
+     * @param localAddress The local address to bind to.
+     * @param transactionTracker The class for tracking STUN transactions.
+     * @param messageVisitorFactory The class for visiting and processing STUN
+     * messages.  Different usages may inject special handling code here.
+     */
+    public UdpStunClient(final InetSocketAddress localAddress,
+        final StunTransactionTracker transactionTracker,
+        final StunMessageVisitorFactory messageVisitorFactory)
+        {
+        super(localAddress, transactionTracker, messageVisitorFactory);
+        }
+    
+    /**
      * Creates a new STUN client that connects to the specified STUN server.
      * 
-     * @param stunServerAddress The address of the STUN server to connect to.
+     * @param localStunServerAddress The address of the STUN server to connect 
+     * to.  This connects on the default port and is primarily used for 
+     * testing.
      */
-    public UdpStunClient(final InetSocketAddress stunServerAddress)
+    public UdpStunClient(final InetAddress localStunServerAddress)
         {
-        super(stunServerAddress, 10*1000);
+        super(localStunServerAddress);
         }
 
     protected IoConnector createConnector(final int connectTimeout)
@@ -49,7 +71,6 @@ public class UdpStunClient extends AbstractStunClient
         final DatagramConnectorConfig cfg = connector.getDefaultConfig();
         cfg.getSessionConfig().setReuseAddress(true);
         
-        //connector.setDefaultConfig(cfg);
         return connector;
         }
     
@@ -57,17 +78,15 @@ public class UdpStunClient extends AbstractStunClient
     public StunMessage write(final BindingRequest request, 
         final InetSocketAddress remoteAddress)
         {
-        
-        // TODO: We need to somehow modify the IoSession to send the request
-        // to the specified address.
-        final IoSession session = connect(remoteAddress);
+        final IoSession session = connect(this.m_localAddress, remoteAddress);
         
         // This method will retransmit the same request multiple times because
         // it's being sent unreliably.  All of these requests will be 
         // identical, using the same transaction ID.
         final UUID id = request.getTransactionId();
         
-        this.m_transactionFactory.createClientTransaction(request, this);
+        this.m_transactionTracker.addTransaction(request, this, 
+            this.m_localAddress, remoteAddress);
         
         int requests = 0;
         
@@ -118,4 +137,5 @@ public class UdpStunClient extends AbstractStunClient
         LOG.warn("Attempted to get a UDP relay!!");
         return null;
         }
+
     }

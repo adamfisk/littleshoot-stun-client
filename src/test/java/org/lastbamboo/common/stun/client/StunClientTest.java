@@ -1,6 +1,5 @@
 package org.lastbamboo.common.stun.client;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import junit.framework.TestCase;
@@ -18,12 +17,7 @@ public class StunClientTest extends TestCase
 
     public void testClient() throws Exception
         {
-        final InetAddress address = 
-            InetAddress.getByName("stun01.sipphone.com");
-        final InetSocketAddress stunServerAddress = 
-            new InetSocketAddress(address, 3478);
-        
-        final StunClient client = new UdpStunClient(stunServerAddress);
+        final StunClient client = new UdpStunClient();
         final InetSocketAddress publicAddress = 
             client.getServerReflexiveAddress();
         

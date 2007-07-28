@@ -27,18 +27,6 @@ public class TcpStunClient extends AbstractStunClient
         {
         super();
         }
-    
-    /**
-     * Creates a new STUN client that connects to the specified STUN server.
-     * 
-     * @param stunServerAddress The address of the STUN server to connect to.
-     * @param connectTimeout The connect timeout. 
-     */
-    public TcpStunClient(final InetSocketAddress stunServerAddress, 
-        final int connectTimeout)
-        {
-        super(stunServerAddress, connectTimeout);
-        }
 
     @Override
     protected IoConnector createConnector(final int connectTimeout)
@@ -60,10 +48,11 @@ public class TcpStunClient extends AbstractStunClient
     public StunMessage write(final BindingRequest request, 
         final InetSocketAddress remoteAddress)
         {
-        final IoSession session = connect(remoteAddress);
+        final IoSession session = connect(this.m_localAddress, remoteAddress);
         final UUID id = request.getTransactionId();
         
-        this.m_transactionFactory.createClientTransaction(request, this);
+        this.m_transactionTracker.addTransaction(request, this,
+            this.m_localAddress, remoteAddress);
         synchronized (request)
             {
             session.write(request);
@@ -72,11 +61,8 @@ public class TcpStunClient extends AbstractStunClient
             waitIfNoResponse(request, 7900);
             }
         
-        
         if (m_idsToResponses.containsKey(id))
             {
-            // TODO: This cast is unfortunate.  Anything better?  Any 
-            // generics solution?
             final StunMessage response = this.m_idsToResponses.get(id);
             return response;
             }

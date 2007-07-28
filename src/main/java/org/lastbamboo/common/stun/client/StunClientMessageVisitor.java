@@ -70,32 +70,34 @@ public class StunClientMessageVisitor implements StunMessageVisitor<Object>
         return null;
         }
 
-    public Object visitAllocateRequest(AllocateRequest request)
+    public Object visitAllocateRequest(final AllocateRequest request)
         {
         return null;
         }
 
-    public Object visitDataIndication(DataIndication data)
+    public Object visitDataIndication(final DataIndication data)
         {
         return null;
         }
 
-    public Object visitSendIndication(SendIndication request)
+    public Object visitSendIndication(final SendIndication request)
         {
         return null;
         }
 
-    public Object visitSuccessfulAllocateResponse(SuccessfulAllocateResponse response)
+    public Object visitSuccessfulAllocateResponse(
+        final SuccessfulAllocateResponse response)
         {
         return null;
         }
 
-    public Object visitConnectRequest(ConnectRequest request)
+    public Object visitConnectRequest(final ConnectRequest request)
         {
         return null;
         }
 
-    public Object visitConnectionStatusIndication(ConnectionStatusIndication indication)
+    public Object visitConnectionStatusIndication(
+        final ConnectionStatusIndication indication)
         {
         return null;
         }
