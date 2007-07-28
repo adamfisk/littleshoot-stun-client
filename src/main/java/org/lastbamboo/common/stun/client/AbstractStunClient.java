@@ -13,6 +13,7 @@ import org.apache.mina.common.IoHandler;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
+import org.lastbamboo.common.stun.stack.StunIoHandler;
 import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
@@ -168,7 +169,7 @@ public abstract class AbstractStunClient implements StunClient,
     protected IoHandler createIoHandler(
         final StunMessageVisitorFactory messageVisitorFactory)
         {
-        return new StunClientIoHandler(messageVisitorFactory);
+        return new StunIoHandler(messageVisitorFactory);
         }
     
     protected final IoSession connect(final InetSocketAddress localAddress, 
