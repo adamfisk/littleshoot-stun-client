@@ -48,7 +48,8 @@ public interface StunClient
     InetSocketAddress getRelayAddress();
     
     /**
-     * Writes a STUN binding request.
+     * Writes a STUN binding request.  This uses the default STUN RTO value
+     * of 100ms.
      * 
      * @param request The STUN binding request.
      * @param remoteAddress The address to send the request to.
@@ -56,4 +57,16 @@ public interface StunClient
      */
     StunMessage write(BindingRequest request, InetSocketAddress remoteAddress);
 
+    /**
+     * Writes a STUN binding request with the RTO value used for 
+     * retransmissions explicitly set.
+     * 
+     * @param request The STUN binding request.
+     * @param remoteAddress The address to send the request to.
+     * @param rto The value to use for RTO when calculating retransmission 
+     * times.  Note this only applies to UDP.
+     * @return The response message.
+     */
+    StunMessage write(BindingRequest request, InetSocketAddress remoteAddress,
+        long rto);
     }

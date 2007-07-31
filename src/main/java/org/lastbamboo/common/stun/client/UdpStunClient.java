@@ -73,10 +73,20 @@ public class UdpStunClient extends AbstractStunClient
         
         return connector;
         }
-    
-
+ 
     public StunMessage write(final BindingRequest request, 
         final InetSocketAddress remoteAddress)
+        {
+        // Use an RTO of 100ms, as discussed in 
+        // draft-ietf-behave-rfc3489bis-06.txt section 7.1.  Note we just 
+        // use this value and don't cache previously discovered values for
+        // the RTO.
+        final long rto = 100L;
+        return write(request, remoteAddress, rto);
+        }
+
+    public StunMessage write(final BindingRequest request, 
+        final InetSocketAddress remoteAddress, final long rto)
         {
         final IoSession session = connect(this.m_localAddress, remoteAddress);
         
@@ -90,11 +100,6 @@ public class UdpStunClient extends AbstractStunClient
         
         int requests = 0;
         
-        // Use an RTO of 100ms, as discussed in 
-        // draft-ietf-behave-rfc3489bis-06.txt section 7.1.  Note we just 
-        // use this value and don't cache previously discovered values for
-        // the RTO.
-        final long rto = 100L;
         long waitTime = 0L;
         synchronized (request)
             {
@@ -128,6 +133,7 @@ public class UdpStunClient extends AbstractStunClient
             return response;
             }
         
+        LOG.warn("Did not get response!!");
         return new NullStunMessage();
         }
 

@@ -46,6 +46,14 @@ public class TcpStunClient extends AbstractStunClient
         }
 
     public StunMessage write(final BindingRequest request, 
+        final InetSocketAddress remoteAddress, final long rto)
+        {
+        // TCP doesn't use the retransmission interval, RTO, because it's
+        // reliable.
+        return write(request, remoteAddress);
+        }
+    
+    public StunMessage write(final BindingRequest request, 
         final InetSocketAddress remoteAddress)
         {
         final IoSession session = connect(this.m_localAddress, remoteAddress);
@@ -68,4 +76,5 @@ public class TcpStunClient extends AbstractStunClient
             }
         return new NullStunMessage();
         }
+
     }

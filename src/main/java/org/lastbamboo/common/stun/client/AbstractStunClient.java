@@ -15,12 +15,15 @@ import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.lastbamboo.common.stun.stack.StunIoHandler;
 import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
+import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
-import org.lastbamboo.common.stun.stack.message.SuccessfulBindingResponse;
+import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
+import org.lastbamboo.common.stun.stack.message.turn.AllocateErrorResponse;
+import org.lastbamboo.common.stun.stack.message.turn.AllocateSuccessResponse;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTrackerImpl;
@@ -134,7 +137,7 @@ public abstract class AbstractStunClient implements StunClient,
         m_connector = createConnector(10*1000);
         m_stunServerAddress = 
             new InetSocketAddress(stunServerAddress, STUN_PORT);
-        m_ioHandler = createIoHandler(messageVisitorFactoryToUse);
+        m_ioHandler = new StunIoHandler(messageVisitorFactoryToUse);
         final ProtocolCodecFactory codecFactory = 
             new StunProtocolCodecFactory();
         final ProtocolCodecFilter stunFilter = 
@@ -157,19 +160,6 @@ public abstract class AbstractStunClient implements StunClient,
             throw new IllegalArgumentException("Could not lookup host.  " +
                 "No network?");
             }
-        }
-
-    /**
-     * Creates an {@link IoHandler}.  Subclasses can override this for 
-     * specific STUN usages.
-     * 
-     * @param messageVisitorFactory The transaction tracker for this client.
-     * @return The {@link IoHandler} to use.
-     */
-    protected IoHandler createIoHandler(
-        final StunMessageVisitorFactory messageVisitorFactory)
-        {
-        return new StunIoHandler(messageVisitorFactory);
         }
     
     protected final IoSession connect(final InetSocketAddress localAddress, 
@@ -203,10 +193,17 @@ public abstract class AbstractStunClient implements StunClient,
             new StunMessageVisitorAdapter<InetSocketAddress>()
             {
 
-            public InetSocketAddress visitSuccessfulBindingResponse(
-                final SuccessfulBindingResponse response)
+            public InetSocketAddress visitBindingSuccessResponse(
+                final BindingSuccessResponse response)
                 {
                 return response.getMappedAddress();
+                }
+
+            public InetSocketAddress visitBindingErrorResponse(
+                final BindingErrorResponse response)
+                {
+                LOG.warn("Received Binding Error Response: "+response);
+                return null;
                 }
             };
           
@@ -242,16 +239,19 @@ public abstract class AbstractStunClient implements StunClient,
             }
         }
 
-    public void onTransactionFailed(final StunMessage request)
+    public void onTransactionFailed(final StunMessage request,
+        final StunMessage response)
         {
-        synchronized (request)
-            {
-            request.notify();
-            }
+        notifyWaiters(request, response);
         }
-
+    
     public void onTransactionSucceeded(final StunMessage request, 
         final StunMessage response)
+        {
+        notifyWaiters(request, response);
+        }
+
+    private void notifyWaiters(StunMessage request, StunMessage response)
         {
         synchronized (request)
             {
@@ -259,4 +259,5 @@ public abstract class AbstractStunClient implements StunClient,
             request.notify();
             }
         }
+
     }
