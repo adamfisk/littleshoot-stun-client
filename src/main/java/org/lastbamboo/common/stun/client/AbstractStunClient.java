@@ -17,13 +17,11 @@ import org.lastbamboo.common.stun.stack.StunIoHandler;
 import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
 import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
+import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
-import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
-import org.lastbamboo.common.stun.stack.message.turn.AllocateErrorResponse;
-import org.lastbamboo.common.stun.stack.message.turn.AllocateSuccessResponse;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTrackerImpl;
@@ -54,8 +52,6 @@ public abstract class AbstractStunClient implements StunClient,
 
     private final IoHandler m_ioHandler;
 
-    //protected final StunTransactionFactory m_transactionFactory;
-    
     protected final Map<UUID, StunMessage> m_idsToResponses =
         new ConcurrentHashMap<UUID, StunMessage>();
 
@@ -239,25 +235,26 @@ public abstract class AbstractStunClient implements StunClient,
             }
         }
 
-    public void onTransactionFailed(final StunMessage request,
+    public Object onTransactionFailed(final StunMessage request,
         final StunMessage response)
         {
-        notifyWaiters(request, response);
+        return notifyWaiters(request, response);
         }
     
-    public void onTransactionSucceeded(final StunMessage request, 
+    public Object onTransactionSucceeded(final StunMessage request, 
         final StunMessage response)
         {
-        notifyWaiters(request, response);
+        return notifyWaiters(request, response);
         }
 
-    private void notifyWaiters(StunMessage request, StunMessage response)
+    private Object notifyWaiters(StunMessage request, StunMessage response)
         {
         synchronized (request)
             {
             this.m_idsToResponses.put(request.getTransactionId(), response);
             request.notify();
             }
+        return null;
         }
 
     }
