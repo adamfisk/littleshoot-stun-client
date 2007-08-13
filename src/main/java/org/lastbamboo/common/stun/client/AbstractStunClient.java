@@ -18,6 +18,7 @@ import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
 import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
+import org.lastbamboo.common.stun.stack.message.IcmpErrorStunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
@@ -153,8 +154,8 @@ public abstract class AbstractStunClient implements StunClient,
         catch (final UnknownHostException e)
             {
             LOG.error("Could not lookup host!!", e);
-            throw new IllegalArgumentException("Could not lookup host.  " +
-                "No network?");
+            throw new IllegalArgumentException("Could not lookup host: " +
+                host + "...  No network?");
             }
         }
     
@@ -199,6 +200,13 @@ public abstract class AbstractStunClient implements StunClient,
                 final BindingErrorResponse response)
                 {
                 LOG.warn("Received Binding Error Response: "+response);
+                return null;
+                }
+
+            public InetSocketAddress visitIcmpErrorMesssage(
+                final IcmpErrorStunMessage message)
+                {
+                LOG.warn("Received ICMP error: {}", message);
                 return null;
                 }
             };

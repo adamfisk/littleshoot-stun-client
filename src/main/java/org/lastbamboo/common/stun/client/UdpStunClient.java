@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import org.apache.commons.id.uuid.UUID;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.mina.common.ExecutorThreadModel;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
@@ -70,7 +71,8 @@ public class UdpStunClient extends AbstractStunClient
         final DatagramConnector connector = new DatagramConnector();
         final DatagramConnectorConfig cfg = connector.getDefaultConfig();
         cfg.getSessionConfig().setReuseAddress(true);
-        
+        cfg.setThreadModel(
+            ExecutorThreadModel.getInstance("UdpStunClient"));
         return connector;
         }
  
