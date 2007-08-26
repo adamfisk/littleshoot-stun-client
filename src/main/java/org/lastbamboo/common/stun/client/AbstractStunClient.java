@@ -7,10 +7,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.id.uuid.UUID;
+import org.apache.mina.common.ByteBuffer;
 import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoHandler;
 import org.apache.mina.common.IoSession;
+import org.apache.mina.common.SimpleByteBufferAllocator;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.lastbamboo.common.stun.stack.StunIoHandler;
@@ -112,6 +114,8 @@ public abstract class AbstractStunClient implements StunClient,
         final StunTransactionTracker transactionTracker, 
         final StunMessageVisitorFactory messageVisitorFactory)
         {
+        ByteBuffer.setUseDirectBuffers(false);
+        ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
         if (transactionTracker == null)
             {
             this.m_transactionTracker = new StunTransactionTrackerImpl();
