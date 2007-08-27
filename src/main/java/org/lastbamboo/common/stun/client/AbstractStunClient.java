@@ -16,7 +16,7 @@ import org.apache.mina.common.SimpleByteBufferAllocator;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolCodecFilter;
 import org.lastbamboo.common.stun.stack.StunIoHandler;
-import org.lastbamboo.common.stun.stack.decoder.StunProtocolCodecFactory;
+import org.lastbamboo.common.stun.stack.StunProtocolCodecFactory;
 import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
