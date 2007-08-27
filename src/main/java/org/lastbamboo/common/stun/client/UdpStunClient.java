@@ -14,8 +14,6 @@ import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.NullStunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
-import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 
 /**
  * STUN client implementation for ICE UDP. 
@@ -38,32 +36,26 @@ public class UdpStunClient extends AbstractStunClient
         }
     
     /**
-     * Creates a new UDP STUN client bound to the specified local address.  
-     * This is necessary for things like ICE because the client and server
-     * both need to be bound to the same local address.
-     * 
-     * @param localAddress The local address to bind to.
-     * @param transactionTracker The class for tracking STUN transactions.
-     * @param messageVisitorFactory The class for visiting and processing STUN
-     * messages.  Different usages may inject special handling code here.
-     */
-    public UdpStunClient(final InetSocketAddress localAddress,
-        final StunTransactionTracker transactionTracker,
-        final StunMessageVisitorFactory messageVisitorFactory)
-        {
-        super(localAddress, transactionTracker, messageVisitorFactory);
-        }
-    
-    /**
      * Creates a new STUN client that connects to the specified STUN server.
      * 
-     * @param localStunServerAddress The address of the STUN server to connect 
+     * @param stunServerAddress The address of the STUN server to connect 
      * to.  This connects on the default port and is primarily used for 
      * testing.
      */
-    public UdpStunClient(final InetAddress localStunServerAddress)
+    public UdpStunClient(final InetAddress stunServerAddress)
         {
-        super(localStunServerAddress);
+        super(stunServerAddress);
+        }
+
+    /**
+     * Creates a new UDP STUN client that binds to the specified local 
+     * address.
+     * 
+     * @param localAddress The local address to bind to. 
+     */
+    public UdpStunClient(final InetSocketAddress localAddress)
+        {
+        super(localAddress);
         }
 
     protected IoConnector createConnector(final int connectTimeout)
@@ -145,5 +137,4 @@ public class UdpStunClient extends AbstractStunClient
         LOG.warn("Attempted to get a UDP relay!!");
         return null;
         }
-
     }

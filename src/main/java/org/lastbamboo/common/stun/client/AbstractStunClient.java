@@ -78,19 +78,6 @@ public abstract class AbstractStunClient implements StunClient,
         {
         this(createInetAddress("stun01.sipphone.com"));
         }
-
-    /**
-     * Creates a new STUN client that binds to the local address.
-     * 
-     * @param localAddress The local address to bind to.
-     */
-    protected AbstractStunClient(final InetSocketAddress localAddress,
-        final StunTransactionTracker transactionTracker,
-        final StunMessageVisitorFactory messageVisitorFactory)
-        {
-        this(localAddress, createInetAddress("stun01.sipphone.com"),
-            transactionTracker, messageVisitorFactory);
-        }
     
     /**
      * Creates a new STUN client that connects to the specified STUN server.
@@ -101,6 +88,18 @@ public abstract class AbstractStunClient implements StunClient,
     protected AbstractStunClient(final InetAddress stunServerAddress)
         {
         this (null, stunServerAddress, null, null);
+        }
+    
+    /**
+     * Creates a new STUN client that binds to the specified local address
+     * but otherwise uses default settings.
+     * 
+     * @param localAddress The local address to bind to.
+     */
+    public AbstractStunClient(final InetSocketAddress localAddress)
+        {
+        this (localAddress, createInetAddress("stun01.sipphone.com"), 
+            null, null);
         }
     
     /**
@@ -208,9 +207,9 @@ public abstract class AbstractStunClient implements StunClient,
                 }
 
             public InetSocketAddress visitIcmpErrorMesssage(
-                final IcmpErrorStunMessage message)
+                final IcmpErrorStunMessage error)
                 {
-                LOG.warn("Received ICMP error: {}", message);
+                LOG.warn("Received ICMP error: {}", error);
                 return null;
                 }
             };
@@ -268,5 +267,4 @@ public abstract class AbstractStunClient implements StunClient,
             }
         return null;
         }
-
     }
