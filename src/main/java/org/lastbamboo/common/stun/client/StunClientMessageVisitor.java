@@ -4,6 +4,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
 import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
+import org.lastbamboo.common.stun.stack.message.IcmpErrorStunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
 import org.lastbamboo.common.stun.stack.transaction.StunClientTransaction;
@@ -11,13 +12,15 @@ import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 
 /**
  * A visitor for STUN messages on STUN clients. 
+ * 
+ * @param <T> The type the specific visitor returns.
  */
 public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
     {
 
     private static final Log LOG = 
         LogFactory.getLog(StunClientMessageVisitor.class);
-    private final StunTransactionTracker m_transactionTracker;
+    private final StunTransactionTracker<T> m_transactionTracker;
 
     /**
      * Creates a new STUN client message visitor.
@@ -25,9 +28,14 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
      * @param transactionTracker The class that keeps track of transactions.
      */
     public StunClientMessageVisitor(
-        final StunTransactionTracker transactionTracker)
+        final StunTransactionTracker<T> transactionTracker)
         {
         m_transactionTracker = transactionTracker;
+        }
+    
+    public T visitIcmpErrorMesssage(final IcmpErrorStunMessage message)
+        {
+        return notifyTransaction(message);
         }
     
     public T visitBindingErrorResponse(
