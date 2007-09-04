@@ -1,7 +1,5 @@
 package org.lastbamboo.common.stun.client;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
 import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
 import org.lastbamboo.common.stun.stack.message.IcmpErrorStunMessage;
@@ -9,6 +7,8 @@ import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
 import org.lastbamboo.common.stun.stack.transaction.StunClientTransaction;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A visitor for STUN messages on STUN clients. 
@@ -18,9 +18,9 @@ import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
     {
 
-    private static final Log LOG = 
-        LogFactory.getLog(StunClientMessageVisitor.class);
-    private final StunTransactionTracker<T> m_transactionTracker;
+    private final Logger m_log = 
+        LoggerFactory.getLogger(StunClientMessageVisitor.class);
+    protected final StunTransactionTracker<T> m_transactionTracker;
 
     /**
      * Creates a new STUN client message visitor.
@@ -35,15 +35,19 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
     
     public T visitIcmpErrorMesssage(final IcmpErrorStunMessage message)
         {
+        if (m_log.isDebugEnabled())
+            {
+            m_log.debug("Received ICMP error: {}", message);
+            }
         return notifyTransaction(message);
         }
     
     public T visitBindingErrorResponse(
         final BindingErrorResponse response)
         {
-        if (LOG.isDebugEnabled())
+        if (m_log.isDebugEnabled())
             {
-            LOG.debug("Received binding error response: "+response);
+            m_log.debug("Received Binding Error response: {}", response);
             }
         return notifyTransaction(response);
         }
@@ -51,9 +55,9 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
     public T visitBindingSuccessResponse(
         final BindingSuccessResponse response)
         {
-        if (LOG.isDebugEnabled())
+        if (m_log.isDebugEnabled())
             {
-            LOG.debug("Received binding response: "+response);
+            m_log.debug("Received Binding Response: {}", response);
             }
         return notifyTransaction(response);
         }
@@ -62,13 +66,13 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
         {
         final StunClientTransaction<T> ct = 
             this.m_transactionTracker.getClientTransaction(response);
-        LOG.debug("Accessed transaction: "+ct);
+        m_log.debug("Accessed transaction: {}", ct);
         
         if (ct == null)
             {
             // This will happen fairly frequently with UDP because messages
             // are retransmitted in case any are lost.
-            LOG.debug("No matching transaction for response: "+response);
+            m_log.debug("No matching transaction for response: {}", response);
             return null;
             }
         
