@@ -4,18 +4,17 @@ import org.apache.mina.common.IoSession;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Factory for creating STUN client message visitors. 
+ * Factory for creating STUN client message visitors.
+ *  
+ * @param <T> The type created visitors return.
  */
-public class StunClientMessageVisitorFactory implements
-    StunMessageVisitorFactory
+public class StunClientMessageVisitorFactory<T> implements
+    StunMessageVisitorFactory<T>
     {
 
-    private final Logger m_log = LoggerFactory.getLogger(getClass());
-    private final StunTransactionTracker m_transactionTracker;
+    private final StunTransactionTracker<T> m_transactionTracker;
 
     /**
      * Creates a new message visitor factory for STUN clients.
@@ -24,19 +23,14 @@ public class StunClientMessageVisitorFactory implements
      * transactions.
      */
     public StunClientMessageVisitorFactory(
-        final StunTransactionTracker transactionTracker)
+        final StunTransactionTracker<T> transactionTracker)
         {
         m_transactionTracker = transactionTracker;
         }
 
-    public StunMessageVisitor createVisitor(final IoSession session)
+    public StunMessageVisitor<T> createVisitor(final IoSession session)
         {
-        return new StunClientMessageVisitor(this.m_transactionTracker);
-        }
-
-    public void onIcmpError()
-        {
-        m_log.warn("Received ICMP error!!");
+        return new StunClientMessageVisitor<T>(this.m_transactionTracker);
         }
 
     }
