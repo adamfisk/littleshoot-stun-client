@@ -60,11 +60,10 @@ public class UdpStunClient extends AbstractStunClient
     protected IoConnector createConnector()
         {
         final DatagramConnector connector = new DatagramConnector();
-        //connector.addListener(this.m_ioServiceListener);
         final DatagramConnectorConfig cfg = connector.getDefaultConfig();
         cfg.getSessionConfig().setReuseAddress(true);
         cfg.setThreadModel(
-            ExecutorThreadModel.getInstance("UdpStunClient"));
+            ExecutorThreadModel.getInstance(getClass().getSimpleName()));
         return connector;
         }
  

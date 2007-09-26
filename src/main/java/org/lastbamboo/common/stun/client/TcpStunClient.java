@@ -17,8 +17,6 @@ import org.lastbamboo.common.stun.stack.message.StunMessage;
 public class TcpStunClient extends AbstractStunClient
     {
     
-    //private final SocketConnector m_connector = new SocketConnector();
-
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
      * of obtaining "server reflexive" and "host" candidates.  We don't use

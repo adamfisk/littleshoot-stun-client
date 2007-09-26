@@ -74,4 +74,6 @@ public interface StunClient
     void addIoServiceListener(IoServiceListener serviceListener);
 
     void connect();
+    
+    void close();
     }

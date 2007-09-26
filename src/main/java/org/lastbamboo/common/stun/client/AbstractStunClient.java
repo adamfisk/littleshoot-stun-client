@@ -51,9 +51,6 @@ public abstract class AbstractStunClient implements StunClient,
     
     private final Collection<IoServiceListener> m_ioServiceListeners =
         new LinkedList<IoServiceListener>();
-    
-    
-    //protected final IoConnector m_connector;
 
     /**
      * This is the address of the STUN server to connect to.
@@ -76,6 +73,9 @@ public abstract class AbstractStunClient implements StunClient,
     protected final StunTransactionTracker m_transactionTracker;
 
     private final InetSocketAddress m_originalLocalAddress;
+
+    private final Collection<IoSession> m_sessions = 
+        new LinkedList<IoSession>();
 
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
@@ -153,21 +153,10 @@ public abstract class AbstractStunClient implements StunClient,
         {
         final IoSession session = 
             connect(m_originalLocalAddress, m_stunServerAddress); 
+        
+        // We set the local address here because the original could be null
+        // to bind to an ephemeral port.
         this.m_localAddress = (InetSocketAddress) session.getLocalAddress();
-        }
-    
-    private static InetAddress createInetAddress(final String host)
-        {
-        try
-            {
-            return InetAddress.getByName(host);
-            }
-        catch (final UnknownHostException e)
-            {
-            LOG.error("Could not lookup host!!", e);
-            throw new IllegalArgumentException("Could not lookup host: " +
-                host + "...  No network?");
-            }
         }
     
     protected final IoSession connect(final InetSocketAddress localAddress, 
@@ -191,7 +180,8 @@ public abstract class AbstractStunClient implements StunClient,
         
         if (this.m_ioServiceListeners.isEmpty())
             {
-            LOG.warn("No service listeners for: {}",getClass().getSimpleName());
+            LOG.debug("No service listeners for: {}",
+                getClass().getSimpleName());
             }
         synchronized (this.m_ioServiceListeners)
             {
@@ -205,6 +195,7 @@ public abstract class AbstractStunClient implements StunClient,
         cf.join();
         LOG.debug("Connected to: {}", stunServerAddress);
         final IoSession session = cf.getSession();
+        this.m_sessions.add(session);
         this.m_currentIoSession = session;
         return session;
         }
@@ -301,5 +292,31 @@ public abstract class AbstractStunClient implements StunClient,
         {
         LOG.debug("Adding service listener for: {}", this);
         this.m_ioServiceListeners.add(serviceListener);
+        }
+    
+
+    public void close()
+        {
+        synchronized (m_sessions)
+            {
+            for (final IoSession session : m_sessions)
+                {
+                session.close();
+                }
+            }
+        }
+    
+    private static InetAddress createInetAddress(final String host)
+        {
+        try
+            {
+            return InetAddress.getByName(host);
+            }
+        catch (final UnknownHostException e)
+            {
+            LOG.error("Could not lookup host!!", e);
+            throw new IllegalArgumentException("Could not lookup host: " +
+                host + "...  No network?");
+            }
         }
     }
