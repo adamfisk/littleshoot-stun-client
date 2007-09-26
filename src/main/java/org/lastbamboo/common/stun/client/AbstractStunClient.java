@@ -3,6 +3,8 @@ package org.lastbamboo.common.stun.client;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Collection;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,6 +13,7 @@ import org.apache.mina.common.ByteBuffer;
 import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoHandler;
+import org.apache.mina.common.IoServiceListener;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.SimpleByteBufferAllocator;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
@@ -46,7 +49,11 @@ public abstract class AbstractStunClient implements StunClient,
     private static final Logger LOG = 
         LoggerFactory.getLogger(AbstractStunClient.class);
     
-    protected final IoConnector m_connector;
+    private final Collection<IoServiceListener> m_ioServiceListeners =
+        new LinkedList<IoServiceListener>();
+    
+    
+    //protected final IoConnector m_connector;
 
     /**
      * This is the address of the STUN server to connect to.
@@ -58,7 +65,7 @@ public abstract class AbstractStunClient implements StunClient,
     protected final Map<UUID, StunMessage> m_idsToResponses =
         new ConcurrentHashMap<UUID, StunMessage>();
 
-    protected final InetSocketAddress m_localAddress;
+    protected InetSocketAddress m_localAddress;
 
     /**
      * Just keeps track of the current connection 5-tuple so we don't try
@@ -67,6 +74,8 @@ public abstract class AbstractStunClient implements StunClient,
     private IoSession m_currentIoSession;
 
     protected final StunTransactionTracker m_transactionTracker;
+
+    private final InetSocketAddress m_originalLocalAddress;
 
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
@@ -115,6 +124,7 @@ public abstract class AbstractStunClient implements StunClient,
         {
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
+        m_originalLocalAddress = localAddress;
         if (transactionTracker == null)
             {
             this.m_transactionTracker = new StunTransactionTrackerImpl();
@@ -134,20 +144,18 @@ public abstract class AbstractStunClient implements StunClient,
             {
             messageVisitorFactoryToUse = messageVisitorFactory;
             }
-        m_connector = createConnector(10*1000);
         m_stunServerAddress = 
             new InetSocketAddress(stunServerAddress, STUN_PORT);
         m_ioHandler = new StunIoHandler(messageVisitorFactoryToUse);
-        final ProtocolCodecFactory codecFactory = 
-            new StunProtocolCodecFactory();
-        final ProtocolCodecFilter stunFilter = 
-            new ProtocolCodecFilter(codecFactory);
-        
-        m_connector.getFilterChain().addLast("stunFilter", stunFilter);
-        final IoSession session = connect(localAddress, m_stunServerAddress); 
+        }
+    
+    public void connect()
+        {
+        final IoSession session = 
+            connect(m_originalLocalAddress, m_stunServerAddress); 
         this.m_localAddress = (InetSocketAddress) session.getLocalAddress();
         }
-
+    
     private static InetAddress createInetAddress(final String host)
         {
         try
@@ -172,9 +180,28 @@ public abstract class AbstractStunClient implements StunClient,
             {
             return this.m_currentIoSession;
             }
+        
+        final ProtocolCodecFactory codecFactory = 
+            new StunProtocolCodecFactory();
+        final ProtocolCodecFilter stunFilter = 
+            new ProtocolCodecFilter(codecFactory);
+        
+        final IoConnector connector = createConnector();
+        connector.getFilterChain().addLast("stunFilter", stunFilter);
+        
+        if (this.m_ioServiceListeners.isEmpty())
+            {
+            LOG.warn("No service listeners for: {}",getClass().getSimpleName());
+            }
+        synchronized (this.m_ioServiceListeners)
+            {
+            for (final IoServiceListener sl : this.m_ioServiceListeners)
+                {
+                connector.addListener(sl);
+                }
+            }
         final ConnectFuture cf = 
-            m_connector.connect(stunServerAddress, localAddress, 
-            m_ioHandler);
+            connector.connect(stunServerAddress, localAddress, m_ioHandler);
         cf.join();
         LOG.debug("Connected to: {}", stunServerAddress);
         final IoSession session = cf.getSession();
@@ -182,7 +209,7 @@ public abstract class AbstractStunClient implements StunClient,
         return session;
         }
 
-    protected abstract IoConnector createConnector(int connectTimeout);
+    protected abstract IoConnector createConnector();
     
     public InetSocketAddress getServerReflexiveAddress()
         {
@@ -266,5 +293,13 @@ public abstract class AbstractStunClient implements StunClient,
             request.notify();
             }
         return null;
+        }
+    
+
+    public final void addIoServiceListener(
+        final IoServiceListener serviceListener)
+        {
+        LOG.debug("Adding service listener for: {}", this);
+        this.m_ioServiceListeners.add(serviceListener);
         }
     }

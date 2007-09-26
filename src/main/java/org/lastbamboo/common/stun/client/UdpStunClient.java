@@ -23,7 +23,6 @@ public class UdpStunClient extends AbstractStunClient
     
     private final Log LOG = LogFactory.getLog(UdpStunClient.class);
     
-    
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
      * of obtaining "server reflexive" and "host" candidates.  We don't use
@@ -58,9 +57,10 @@ public class UdpStunClient extends AbstractStunClient
         super(localAddress);
         }
 
-    protected IoConnector createConnector(final int connectTimeout)
+    protected IoConnector createConnector()
         {
         final DatagramConnector connector = new DatagramConnector();
+        //connector.addListener(this.m_ioServiceListener);
         final DatagramConnectorConfig cfg = connector.getDefaultConfig();
         cfg.getSessionConfig().setReuseAddress(true);
         cfg.setThreadModel(

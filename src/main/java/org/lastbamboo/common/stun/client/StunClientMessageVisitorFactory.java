@@ -10,8 +10,8 @@ import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
  *  
  * @param <T> The type created visitors return.
  */
-public class StunClientMessageVisitorFactory<T> implements
-    StunMessageVisitorFactory<T>
+public class StunClientMessageVisitorFactory<T, Z> implements
+    StunMessageVisitorFactory<T, Z>
     {
 
     private final StunTransactionTracker<T> m_transactionTracker;
@@ -29,6 +29,11 @@ public class StunClientMessageVisitorFactory<T> implements
         }
 
     public StunMessageVisitor<T> createVisitor(final IoSession session)
+        {
+        return new StunClientMessageVisitor<T>(this.m_transactionTracker);
+        }
+
+    public StunMessageVisitor<T> createVisitor(IoSession session, Z attachment)
         {
         return new StunClientMessageVisitor<T>(this.m_transactionTracker);
         }

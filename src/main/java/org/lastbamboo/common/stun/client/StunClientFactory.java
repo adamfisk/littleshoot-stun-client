@@ -5,8 +5,8 @@ import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 /**
  * Interface for classes that create new STUN clients. 
  */
-public interface StunClientFactory<T>
+public interface StunClientFactory
     {
 
-    StunClient newStunClient(StunMessageVisitorFactory<T> visitorFactory);
+    StunClient newStunClient(StunMessageVisitorFactory visitorFactory);
     }
