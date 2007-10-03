@@ -76,6 +76,11 @@ public abstract class AbstractStunClient implements StunClient,
 
     private final Collection<IoSession> m_sessions = 
         new LinkedList<IoSession>();
+    
+    /**
+     * Free World Dialup.
+     */
+    private static final String DEFAULT_STUN_SERVER = "stun.fwdnet.net";
 
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
@@ -85,7 +90,7 @@ public abstract class AbstractStunClient implements StunClient,
      */
     protected AbstractStunClient()
         {
-        this(createInetAddress("stun01.sipphone.com"));
+        this(createInetAddress(DEFAULT_STUN_SERVER));
         }
     
     /**
@@ -107,7 +112,7 @@ public abstract class AbstractStunClient implements StunClient,
      */
     public AbstractStunClient(final InetSocketAddress localAddress)
         {
-        this (localAddress, createInetAddress("stun01.sipphone.com"), 
+        this (localAddress, createInetAddress(DEFAULT_STUN_SERVER), 
             null, null);
         }
     
