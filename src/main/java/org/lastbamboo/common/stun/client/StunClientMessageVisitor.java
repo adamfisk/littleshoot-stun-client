@@ -2,7 +2,7 @@ package org.lastbamboo.common.stun.client;
 
 import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
 import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
-import org.lastbamboo.common.stun.stack.message.IcmpErrorStunMessage;
+import org.lastbamboo.common.stun.stack.message.ConnectErrorStunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
 import org.lastbamboo.common.stun.stack.transaction.StunClientTransaction;
@@ -33,7 +33,7 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
         m_transactionTracker = transactionTracker;
         }
     
-    public T visitIcmpErrorMesssage(final IcmpErrorStunMessage message)
+    public T visitConnectErrorMesssage(final ConnectErrorStunMessage message)
         {
         if (m_log.isDebugEnabled())
             {
