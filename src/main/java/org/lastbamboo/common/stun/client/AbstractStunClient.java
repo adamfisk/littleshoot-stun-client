@@ -195,8 +195,10 @@ public abstract class AbstractStunClient implements StunClient,
                 connector.addListener(sl);
                 }
             }
+        LOG.debug("Connecting to: {}", stunServerAddress);
         final ConnectFuture cf = 
             connector.connect(stunServerAddress, localAddress, m_ioHandler);
+        LOG.debug("About to join");
         cf.join();
         LOG.debug("Connected to: {}", stunServerAddress);
         final IoSession session = cf.getSession();
