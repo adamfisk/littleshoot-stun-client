@@ -12,7 +12,7 @@ import org.lastbamboo.common.stun.stack.message.NullStunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
 
 /**
- * STUN client implementation for ICE UDP. 
+ * STUN client implementation for ICE TCP. 
  */
 public class TcpStunClient extends AbstractStunClient
     {
@@ -74,5 +74,12 @@ public class TcpStunClient extends AbstractStunClient
             return response;
             }
         return new NullStunMessage();
+        }
+
+    public boolean hostPortMapped()
+        {
+        // We don't map ports for clients (only for classes that also accept
+        // incoming connections).
+        return false;
         }
     }

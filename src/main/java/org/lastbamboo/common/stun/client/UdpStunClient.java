@@ -136,4 +136,11 @@ public class UdpStunClient extends AbstractStunClient
         LOG.warn("Attempted to get a UDP relay!!");
         return null;
         }
+    
+    public boolean hostPortMapped()
+        {
+        // We don't map ports for clients (only for classes that also accept
+        // incoming connections).
+        return false;
+        }
     }
