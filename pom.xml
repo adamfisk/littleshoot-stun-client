@@ -11,7 +11,7 @@
 
     <parent>
         <groupId>org.lastbamboo</groupId>
-        <artifactId>lastbamboo-common</artifactId>
+        <artifactId>lastbamboo-common-stun</artifactId>
         <version>1.0</version>
         </parent>
 
