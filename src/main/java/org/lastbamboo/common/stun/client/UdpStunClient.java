@@ -126,7 +126,7 @@ public class UdpStunClient extends AbstractStunClient
             return response;
             }
         
-        LOG.warn("Did not get response!!");
+        LOG.warn("Did not get response from: "+remoteAddress);
         return new NullStunMessage();
         }
 

@@ -71,7 +71,9 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
         if (ct == null)
             {
             // This will happen fairly frequently with UDP because messages
-            // are retransmitted in case any are lost.
+            // are retransmitted in case any are lost.  When responses are
+            // received, the transaction ID is removed, so we won't recognize
+            // the IDs of subsequent responses.
             m_log.debug("No matching transaction for response: {}", response);
             return null;
             }
