@@ -217,13 +217,14 @@ public abstract class AbstractStunClient implements StunClient,
         final StunMessageVisitor<InetSocketAddress> visitor = 
             new StunMessageVisitorAdapter<InetSocketAddress>()
             {
-
+            @Override
             public InetSocketAddress visitBindingSuccessResponse(
                 final BindingSuccessResponse response)
                 {
                 return response.getMappedAddress();
                 }
 
+            @Override
             public InetSocketAddress visitBindingErrorResponse(
                 final BindingErrorResponse response)
                 {
@@ -231,6 +232,7 @@ public abstract class AbstractStunClient implements StunClient,
                 return null;
                 }
 
+            @Override
             public InetSocketAddress visitConnectErrorMesssage(
                 final ConnectErrorStunMessage error)
                 {
