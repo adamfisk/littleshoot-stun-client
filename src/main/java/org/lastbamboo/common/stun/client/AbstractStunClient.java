@@ -94,6 +94,21 @@ public abstract class AbstractStunClient implements StunClient,
         }
     
     /**
+     * Creates a new STUN client for ICE processing.  This client is capable
+     * of obtaining "server reflexive" and "host" candidates.  We don't use
+     * relaying for UDP, so this does not currently support generating
+     * "relayed" candidates.
+     * 
+     * @param transactionTracker The transaction tracker to use.
+     */
+    protected AbstractStunClient(
+        final StunTransactionTracker<StunMessage> transactionTracker)
+        {
+        this (null, createInetAddress(DEFAULT_STUN_SERVER), 
+            transactionTracker, null);
+        }
+    
+    /**
      * Creates a new STUN client that connects to the specified STUN server.
      * 
      * @param stunServerAddress The address of the STUN server to connect to.

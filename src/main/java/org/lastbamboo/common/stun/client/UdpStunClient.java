@@ -14,6 +14,7 @@ import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.lastbamboo.common.stun.stack.message.BindingRequest;
 import org.lastbamboo.common.stun.stack.message.NullStunMessage;
 import org.lastbamboo.common.stun.stack.message.StunMessage;
+import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 
 /**
  * STUN client implementation for ICE UDP. 
@@ -32,6 +33,20 @@ public class UdpStunClient extends AbstractStunClient
     public UdpStunClient()
         {
         super();
+        }
+        
+    /**
+     * Creates a new STUN client for ICE processing.  This client is capable
+     * of obtaining "server reflexive" and "host" candidates.  We don't use
+     * relaying for UDP, so this does not currently support generating
+     * "relayed" candidates.
+     * 
+     * @param transactionTracker The transaction tracker to use.
+     */
+    public UdpStunClient(
+        final StunTransactionTracker<StunMessage> transactionTracker)
+        {
+        super(transactionTracker);
         }
     
     /**
