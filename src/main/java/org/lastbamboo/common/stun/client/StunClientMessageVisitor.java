@@ -33,6 +33,7 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
         m_transactionTracker = transactionTracker;
         }
     
+    @Override
     public T visitConnectErrorMesssage(final ConnectErrorStunMessage message)
         {
         if (m_log.isDebugEnabled())
@@ -42,6 +43,7 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
         return notifyTransaction(message);
         }
     
+    @Override
     public T visitBindingErrorResponse(
         final BindingErrorResponse response)
         {
@@ -52,6 +54,7 @@ public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
         return notifyTransaction(response);
         }
 
+    @Override
     public T visitBindingSuccessResponse(
         final BindingSuccessResponse response)
         {
