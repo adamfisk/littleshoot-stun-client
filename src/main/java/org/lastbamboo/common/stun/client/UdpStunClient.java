@@ -72,6 +72,7 @@ public class UdpStunClient extends AbstractStunClient
         super(localAddress);
         }
 
+    @Override
     protected IoConnector createConnector()
         {
         final DatagramConnector connector = new DatagramConnector();
