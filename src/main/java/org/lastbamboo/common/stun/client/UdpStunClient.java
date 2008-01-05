@@ -8,6 +8,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.mina.common.ExecutorThreadModel;
 import org.apache.mina.common.IoConnector;
+import org.apache.mina.common.IoHandler;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.transport.socket.nio.DatagramConnector;
 import org.apache.mina.transport.socket.nio.DatagramConnectorConfig;
@@ -44,9 +45,10 @@ public class UdpStunClient extends AbstractStunClient
      * @param transactionTracker The transaction tracker to use.
      */
     public UdpStunClient(
-        final StunTransactionTracker<StunMessage> transactionTracker)
+        final StunTransactionTracker<StunMessage> transactionTracker,
+        final IoHandler ioHandler)
         {
-        super(transactionTracker);
+        super(transactionTracker, ioHandler);
         }
     
     /**

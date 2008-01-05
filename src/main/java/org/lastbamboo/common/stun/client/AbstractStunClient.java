@@ -70,7 +70,7 @@ public abstract class AbstractStunClient implements StunClient,
      */
     private IoSession m_currentIoSession;
 
-    protected final StunTransactionTracker m_transactionTracker;
+    protected final StunTransactionTracker<StunMessage> m_transactionTracker;
 
     private final InetSocketAddress m_originalLocalAddress;
 
@@ -100,12 +100,14 @@ public abstract class AbstractStunClient implements StunClient,
      * "relayed" candidates.
      * 
      * @param transactionTracker The transaction tracker to use.
+     * @param ioHandler The {@link IoHandler} to use.
      */
     protected AbstractStunClient(
-        final StunTransactionTracker<StunMessage> transactionTracker)
+        final StunTransactionTracker<StunMessage> transactionTracker,
+        final IoHandler ioHandler)
         {
         this (null, createInetAddress(DEFAULT_STUN_SERVER), 
-            transactionTracker, null);
+            transactionTracker, ioHandler);
         }
     
     /**
@@ -139,8 +141,8 @@ public abstract class AbstractStunClient implements StunClient,
      */
     private AbstractStunClient(final InetSocketAddress localAddress,
         final InetAddress stunServerAddress,
-        final StunTransactionTracker transactionTracker, 
-        final StunMessageVisitorFactory messageVisitorFactory)
+        final StunTransactionTracker<StunMessage> transactionTracker, 
+        final IoHandler ioHandler)
         {
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
@@ -154,19 +156,20 @@ public abstract class AbstractStunClient implements StunClient,
             this.m_transactionTracker = transactionTracker;
             }
         
-        final StunMessageVisitorFactory messageVisitorFactoryToUse;
-        if (messageVisitorFactory == null)
+
+        m_stunServerAddress = 
+            new InetSocketAddress(stunServerAddress, STUN_PORT);
+        
+        if (ioHandler == null)
             {
-            messageVisitorFactoryToUse =
+            final StunMessageVisitorFactory messageVisitorFactoryToUse = 
                 new StunClientMessageVisitorFactory(this.m_transactionTracker);
+            m_ioHandler = new StunIoHandler(messageVisitorFactoryToUse);
             }
         else
             {
-            messageVisitorFactoryToUse = messageVisitorFactory;
+            m_ioHandler = ioHandler;
             }
-        m_stunServerAddress = 
-            new InetSocketAddress(stunServerAddress, STUN_PORT);
-        m_ioHandler = new StunIoHandler(messageVisitorFactoryToUse);
         }
     
     public void connect()
