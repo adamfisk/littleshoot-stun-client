@@ -52,6 +52,18 @@ public abstract class AbstractStunClient implements StunClient,
     private static final Logger LOG = 
         LoggerFactory.getLogger(AbstractStunClient.class);
     
+    private static final String[] DEFAULT_SERVER_STRINGS = 
+        {
+        "stunserver.org",
+        "stun01.sipphone.com",
+        "stun.ideasip.com",
+        "stun.fwdnet.net",
+        "stun.ekiga.net",
+        };
+
+    private static final List<String> DEFAULT_SERVERS = 
+        Arrays.asList(DEFAULT_SERVER_STRINGS);
+        
     private final Collection<IoServiceListener> m_ioServiceListeners =
         new LinkedList<IoServiceListener>();
 
@@ -81,26 +93,6 @@ public abstract class AbstractStunClient implements StunClient,
         new LinkedList<IoSession>();
     
     /**
-     * Randomly selected default server.
-     */
-    private static final String DEFAULT_STUN_SERVER;
-
-    static
-        {
-        final String[] serverStrings = 
-            {
-            "stunserver.org",
-            "stun01.sipphone.com",
-            "stun.ideasip.com",
-            "stun.fwdnet.net",
-            "stun.ekiga.net",
-            };
-        final List<String> servers = Arrays.asList(serverStrings);
-        Collections.shuffle(servers);
-        DEFAULT_STUN_SERVER = servers.iterator().next();
-        }
-    
-    /**
      * Creates a new STUN client for ICE processing.  This client is capable
      * of obtaining "server reflexive" and "host" candidates.  We don't use
      * relaying for UDP, so this does not currently support generating
@@ -108,7 +100,7 @@ public abstract class AbstractStunClient implements StunClient,
      */
     protected AbstractStunClient()
         {
-        this(createInetAddress(DEFAULT_STUN_SERVER));
+        this(createInetAddress(randomServer()));
         }
     
     /**
@@ -124,7 +116,7 @@ public abstract class AbstractStunClient implements StunClient,
         final StunTransactionTracker<StunMessage> transactionTracker,
         final IoHandler ioHandler)
         {
-        this (null, createInetAddress(DEFAULT_STUN_SERVER), 
+        this (null, createInetAddress(randomServer()), 
             transactionTracker, ioHandler);
         }
     
@@ -147,7 +139,7 @@ public abstract class AbstractStunClient implements StunClient,
      */
     public AbstractStunClient(final InetSocketAddress localAddress)
         {
-        this (localAddress, createInetAddress(DEFAULT_STUN_SERVER), 
+        this (localAddress, createInetAddress(randomServer()), 
             null, null);
         }
     
@@ -186,6 +178,15 @@ public abstract class AbstractStunClient implements StunClient,
         else
             {
             m_ioHandler = ioHandler;
+            }
+        }
+  
+    private static String randomServer()
+        {
+        synchronized (DEFAULT_SERVER_STRINGS)
+            {
+            Collections.shuffle(DEFAULT_SERVERS);
+            return DEFAULT_SERVERS.iterator().next();
             }
         }
     
