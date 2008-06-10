@@ -22,7 +22,7 @@ public class StunClientTest extends TestCase
             client.getServerReflexiveAddress();
         
         LOG.debug("Got address: "+publicAddress);
-        assertNotNull("Null public address -- STUN client could not access public address", 
-                publicAddress);
+        assertNotNull("Null public address -- STUN client could not access " +
+            "public address", publicAddress);
         }
     }

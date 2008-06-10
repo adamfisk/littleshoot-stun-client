@@ -3,8 +3,11 @@ package org.lastbamboo.common.stun.client;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -56,7 +59,7 @@ public abstract class AbstractStunClient implements StunClient,
      * This is the address of the STUN server to connect to.
      */
     private final InetSocketAddress m_stunServerAddress;
-
+    
     private final IoHandler m_ioHandler;
 
     protected final Map<UUID, StunMessage> m_idsToResponses =
@@ -78,10 +81,25 @@ public abstract class AbstractStunClient implements StunClient,
         new LinkedList<IoSession>();
     
     /**
-     * Free World Dialup.
+     * Randomly selected default server.
      */
-    private static final String DEFAULT_STUN_SERVER = "stun.fwdnet.net";
+    private static final String DEFAULT_STUN_SERVER;
 
+    static
+        {
+        final String[] serverStrings = 
+            {
+            "stunserver.org",
+            "stun01.sipphone.com",
+            "stun.ideasip.com",
+            "stun.fwdnet.net",
+            "stun.ekiga.net",
+            };
+        final List<String> servers = Arrays.asList(serverStrings);
+        Collections.shuffle(servers);
+        DEFAULT_STUN_SERVER = servers.iterator().next();
+        }
+    
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
      * of obtaining "server reflexive" and "host" candidates.  We don't use
@@ -156,7 +174,6 @@ public abstract class AbstractStunClient implements StunClient,
             this.m_transactionTracker = transactionTracker;
             }
         
-
         m_stunServerAddress = 
             new InetSocketAddress(stunServerAddress, STUN_PORT);
         
@@ -230,7 +247,6 @@ public abstract class AbstractStunClient implements StunClient,
     public InetSocketAddress getServerReflexiveAddress()
         {
         final BindingRequest br = new BindingRequest();
-        
         final StunMessage message = write(br, this.m_stunServerAddress);
         final StunMessageVisitor<InetSocketAddress> visitor = 
             new StunMessageVisitorAdapter<InetSocketAddress>()
@@ -333,17 +349,17 @@ public abstract class AbstractStunClient implements StunClient,
             }
         }
     
-    private static InetAddress createInetAddress(final String host)
+    private static InetAddress createInetAddress(final String server)
         {
         try
             {
-            return InetAddress.getByName(host);
+            return InetAddress.getByName(server);
             }
         catch (final UnknownHostException e)
             {
             LOG.error("Could not lookup host!!", e);
-            throw new IllegalArgumentException("Could not lookup host: " +
-                host + "...  No network?");
+            throw new IllegalArgumentException("Could not lookup host.  " +
+                    "No network?  Tried servers: {}" + server);
             }
         }
     }
