@@ -341,10 +341,12 @@ public abstract class AbstractStunClient implements StunClient,
 
     public void close()
         {
+        LOG.debug("Closing sessions...");
         synchronized (m_sessions)
             {
             for (final IoSession session : m_sessions)
                 {
+                LOG.debug("Closing: {}", session);
                 session.close();
                 }
             }
