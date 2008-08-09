@@ -44,25 +44,13 @@ public abstract class AbstractStunClient implements StunClient,
     StunTransactionListener
     {
 
+    private static final Logger LOG = 
+        LoggerFactory.getLogger(AbstractStunClient.class);
+    
     /**
      * The default STUN port.
      */
     private static final int STUN_PORT = 3478;
-    
-    private static final Logger LOG = 
-        LoggerFactory.getLogger(AbstractStunClient.class);
-    
-    private static final String[] DEFAULT_SERVER_STRINGS = 
-        {
-        "stunserver.org",
-        "stun01.sipphone.com",
-        "stun.ideasip.com",
-        "stun.fwdnet.net",
-        "stun.ekiga.net",
-        };
-
-    private static final List<String> DEFAULT_SERVERS = 
-        Arrays.asList(DEFAULT_SERVER_STRINGS);
         
     private final Collection<IoServiceListener> m_ioServiceListeners =
         new LinkedList<IoServiceListener>();
@@ -100,7 +88,7 @@ public abstract class AbstractStunClient implements StunClient,
      */
     protected AbstractStunClient()
         {
-        this(createInetAddress(randomServer()));
+        this(createInetAddress());
         }
     
     /**
@@ -116,8 +104,7 @@ public abstract class AbstractStunClient implements StunClient,
         final StunTransactionTracker<StunMessage> transactionTracker,
         final IoHandler ioHandler)
         {
-        this (null, createInetAddress(randomServer()), 
-            transactionTracker, ioHandler);
+        this (null, createInetAddress(), transactionTracker, ioHandler);
         }
     
     /**
@@ -139,7 +126,7 @@ public abstract class AbstractStunClient implements StunClient,
      */
     public AbstractStunClient(final InetSocketAddress localAddress)
         {
-        this (localAddress, createInetAddress(randomServer()), 
+        this (localAddress, createInetAddress(), 
             null, null);
         }
     
@@ -178,15 +165,6 @@ public abstract class AbstractStunClient implements StunClient,
         else
             {
             m_ioHandler = ioHandler;
-            }
-        }
-  
-    private static String randomServer()
-        {
-        synchronized (DEFAULT_SERVER_STRINGS)
-            {
-            Collections.shuffle(DEFAULT_SERVERS);
-            return DEFAULT_SERVERS.iterator().next();
             }
         }
     
@@ -352,17 +330,33 @@ public abstract class AbstractStunClient implements StunClient,
             }
         }
     
-    private static InetAddress createInetAddress(final String server)
+    private static InetAddress createInetAddress()
         {
-        try
+        final List<String> servers = 
+            Arrays.asList(
+                new String[] 
+                    {
+                    "stunserver.org",
+                    "stun01.sipphone.com",
+                    "stun.ideasip.com",
+                    "stun.ekiga.net",
+                    }
+                );
+        Collections.shuffle(servers);
+        for (final String server : servers)
             {
-            return InetAddress.getByName(server);
+            try
+                {
+                return InetAddress.getByName(server);
+                }
+            catch (final UnknownHostException e)
+                {
+                LOG.error("Could not lookup host: "+server, e);
+                }
             }
-        catch (final UnknownHostException e)
-            {
-            LOG.error("Could not lookup host!!", e);
-            throw new IllegalArgumentException("Could not lookup host.  " +
-                    "No network?  Tried servers: {}" + server);
-            }
+        
+        LOG.error("All hosts failed!!: {}", servers);
+        throw new IllegalArgumentException("Could not lookup host.  " +
+            "No network?  Tried servers: {}" + servers);
         }
     }
