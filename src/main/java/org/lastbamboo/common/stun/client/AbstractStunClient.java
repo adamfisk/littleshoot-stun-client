@@ -336,7 +336,7 @@ public abstract class AbstractStunClient implements StunClient,
             Arrays.asList(
                 new String[] 
                     {
-                    "stunserver.org",
+                    //"stunserver.org",
                     "stun01.sipphone.com",
                     "stun.ideasip.com",
                     "stun.ekiga.net",
