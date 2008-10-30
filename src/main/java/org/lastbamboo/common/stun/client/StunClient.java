@@ -1,5 +1,6 @@
 package org.lastbamboo.common.stun.client;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
@@ -73,7 +74,7 @@ public interface StunClient
 
     void addIoServiceListener(IoServiceListener serviceListener);
 
-    void connect();
+    void connect() throws IOException;
     
     void close();
 
