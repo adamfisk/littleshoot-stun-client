@@ -19,9 +19,7 @@ public class TcpStunClient extends AbstractStunClient
     
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
-     * of obtaining "server reflexive" and "host" candidates.  We don't use
-     * relaying for UDP, so this does not currently support generating
-     * "relayed" candidates.
+     * of obtaining "server reflexive" and "host" candidates. 
      */
     public TcpStunClient()
         {
