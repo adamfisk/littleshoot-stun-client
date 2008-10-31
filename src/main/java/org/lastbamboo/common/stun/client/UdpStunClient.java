@@ -1,5 +1,6 @@
 package org.lastbamboo.common.stun.client;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -61,14 +62,14 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     /**
      * This is the address of the STUN server to connect to.
      */
-    protected final InetSocketAddress m_stunServerAddress;
+    private InetSocketAddress m_stunServerAddress;
     
     private final IoHandler m_ioHandler;
 
-    protected final Map<UUID, StunMessage> m_idsToResponses =
+    private final Map<UUID, StunMessage> m_idsToResponses =
         new ConcurrentHashMap<UUID, StunMessage>();
 
-    protected InetSocketAddress m_localAddress;
+    private InetSocketAddress m_localAddress;
 
     /**
      * Just keeps track of the current connection 5-tuple so we don't try
@@ -76,7 +77,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      */
     private IoSession m_currentIoSession;
 
-    protected final StunTransactionTracker<StunMessage> m_transactionTracker;
+    private final StunTransactionTracker<StunMessage> m_transactionTracker;
 
     private final InetSocketAddress m_originalLocalAddress;
 
@@ -104,7 +105,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      * 
      * @param stunServerAddress The address of the STUN server to connect to.
      */
-    public UdpStunClient(final InetAddress stunServerAddress)
+    public UdpStunClient(final InetSocketAddress stunServerAddress)
         {
         this (null, stunServerAddress, null, null);
         }
@@ -124,7 +125,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      * @param connectTimeout The timeout to wait for connections.
      */
     private UdpStunClient(final InetSocketAddress localAddress,
-        final InetAddress stunServerAddress,
+        final InetSocketAddress stunServerAddress,
         final StunTransactionTracker<StunMessage> transactionTracker, 
         final IoHandler ioHandler)
         {
@@ -145,8 +146,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             this.m_transactionTracker = transactionTracker;
             }
         
-        m_stunServerAddress = 
-            new InetSocketAddress(stunServerAddress, STUN_PORT);
+        m_stunServerAddress = stunServerAddress;
         
         if (ioHandler == null)
             {
@@ -160,7 +160,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             }
         }
     
-    public void connect()
+    public void connect() throws IOException
         {
         final IoSession session = 
             connect(m_originalLocalAddress, m_stunServerAddress); 
@@ -170,8 +170,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         this.m_localAddress = (InetSocketAddress) session.getLocalAddress();
         }
     
-    protected final IoSession connect(final InetSocketAddress localAddress, 
-        final InetSocketAddress stunServerAddress)
+    private final IoSession connect(final InetSocketAddress localAddress, 
+        final InetSocketAddress stunServerAddress) throws IOException
         {
         // We can't connect twice to the same 5-tuple, so check to verify we're
         // not reconnecting to the remote host we're already connected to.
@@ -208,6 +208,11 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         cf.join();
         LOG.debug("Connected to: {}", stunServerAddress);
         final IoSession session = cf.getSession();
+        if (session == null)
+            {
+            throw new IOException("Could not get session with: "+
+                stunServerAddress);
+            }
         this.m_sessions.add(session);
         this.m_currentIoSession = session;
         return session;
@@ -294,43 +299,55 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         return connector;
         }
     
-    public InetSocketAddress getServerReflexiveAddress()
+    public InetSocketAddress getServerReflexiveAddress() throws IOException
         {
-        final BindingRequest br = new BindingRequest();
-        final StunMessage message = write(br, this.m_stunServerAddress);
-        final StunMessageVisitor<InetSocketAddress> visitor = 
-            new StunMessageVisitorAdapter<InetSocketAddress>()
+        for (int i = 0; i < 3; i++)
             {
-            @Override
-            public InetSocketAddress visitBindingSuccessResponse(
-                final BindingSuccessResponse response)
+            final BindingRequest br = new BindingRequest();
+            final StunMessage message = write(br, this.m_stunServerAddress);
+            final StunMessageVisitor<InetSocketAddress> visitor = 
+                new StunMessageVisitorAdapter<InetSocketAddress>()
                 {
-                return response.getMappedAddress();
-                }
-
-            @Override
-            public InetSocketAddress visitBindingErrorResponse(
-                final BindingErrorResponse response)
+                @Override
+                public InetSocketAddress visitBindingSuccessResponse(
+                    final BindingSuccessResponse response)
+                    {
+                    return response.getMappedAddress();
+                    }
+    
+                @Override
+                public InetSocketAddress visitBindingErrorResponse(
+                    final BindingErrorResponse response)
+                    {
+                    LOG.warn("Received Binding Error Response: "+response);
+                    return null;
+                    }
+    
+                @Override
+                public InetSocketAddress visitConnectErrorMesssage(
+                    final ConnectErrorStunMessage error)
+                    {
+                    LOG.warn("Received ICMP error: {}", error);
+                    return null;
+                    }
+                };
+              
+            final InetSocketAddress isa = message.accept(visitor);
+            if (isa == null)
                 {
-                LOG.warn("Received Binding Error Response: "+response);
-                return null;
+                this.m_stunServerAddress = 
+                    pickStunServerInetAddress(this.m_stunServerAddress);
+                continue;
                 }
-
-            @Override
-            public InetSocketAddress visitConnectErrorMesssage(
-                final ConnectErrorStunMessage error)
-                {
-                LOG.warn("Received ICMP error: {}", error);
-                return null;
-                }
-            };
-          
-        final InetSocketAddress isa = message.accept(visitor);
-        return isa;
+            return isa;
+            }
+        
+        // If we get here, all our attempts failed. Maybe the client's offline?
+        throw new IOException("Could not get server reflexive address!");
         }
  
     public StunMessage write(final BindingRequest request, 
-        final InetSocketAddress remoteAddress)
+        final InetSocketAddress remoteAddress) throws IOException
         {
         // Use an RTO of 100ms, as discussed in 
         // draft-ietf-behave-rfc3489bis-06.txt section 7.1.  Note we just 
@@ -341,8 +358,11 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         }
 
     public StunMessage write(final BindingRequest request, 
-        final InetSocketAddress remoteAddress, final long rto)
+        final InetSocketAddress remoteAddress, final long rto) 
+        throws IOException
         {
+        // Note we've typically already "connected" around creation time with
+        // the connect method, but it's cheap with UDP.
         final IoSession session = connect(this.m_localAddress, remoteAddress);
         
         // This method will retransmit the same request multiple times because
@@ -406,7 +426,13 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         return false;
         }
     
-    private static InetAddress pickStunServerInetAddress()
+    private static InetSocketAddress pickStunServerInetAddress()
+        {
+        return pickStunServerInetAddress(null);
+        }
+    
+    private static InetSocketAddress pickStunServerInetAddress(
+        final InetSocketAddress skipAddress)
         {
         final List<String> servers = 
             Arrays.asList(
@@ -423,7 +449,13 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             {
             try
                 {
-                return InetAddress.getByName(server);
+                final InetSocketAddress address = 
+                    new InetSocketAddress(InetAddress.getByName(server), 
+                        STUN_PORT);
+                if (skipAddress != null && address.equals(skipAddress))
+                    continue;
+                else
+                    return address;
                 }
             catch (final UnknownHostException e)
                 {

@@ -29,8 +29,9 @@ public interface StunClient
      * there's packet loss.
      * 
      * @return The server reflexive address for this ICE candidate.
+     * @throws IOException If there's an IO error writing the message.
      */
-    InetSocketAddress getServerReflexiveAddress();
+    InetSocketAddress getServerReflexiveAddress() throws IOException;
 
     /**
      * Accessor for the address of the STUN server.
@@ -56,8 +57,10 @@ public interface StunClient
      * @param request The STUN binding request.
      * @param remoteAddress The address to send the request to.
      * @return The response message.
+     * @throws IOException If there's an IO error writing the message.
      */
-    StunMessage write(BindingRequest request, InetSocketAddress remoteAddress);
+    StunMessage write(BindingRequest request, InetSocketAddress remoteAddress) 
+        throws IOException;
 
     /**
      * Writes a STUN binding request with the RTO value used for 
@@ -68,9 +71,10 @@ public interface StunClient
      * @param rto The value to use for RTO when calculating retransmission 
      * times.  Note this only applies to UDP.
      * @return The response message.
+     * @throws IOException If there's an IO error writing the message.
      */
     StunMessage write(BindingRequest request, InetSocketAddress remoteAddress,
-        long rto);
+        long rto) throws IOException;
 
     void addIoServiceListener(IoServiceListener serviceListener);
 
