@@ -3,12 +3,8 @@ package org.lastbamboo.common.stun.client;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,6 +35,8 @@ import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTrackerImpl;
+import org.lastbamboo.common.util.SrvUtil;
+import org.lastbamboo.common.util.SrvUtilImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,10 +90,11 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      * 
      * @param transactionTracker The transaction tracker to use.
      * @param ioHandler The {@link IoHandler} to use.
+     * @throws IOException If we can't get a STUN server address.
      */
     public UdpStunClient(
         final StunTransactionTracker<StunMessage> transactionTracker,
-        final IoHandler ioHandler)
+        final IoHandler ioHandler) throws IOException
         {
         this (null, pickStunServerInetAddress(), transactionTracker, ioHandler);
         }
@@ -112,8 +111,9 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     
     /**
      * Creates a new STUN client that connects to the specified STUN server.
+     * @throws IOException If we can't get a STUN server address. 
      */
-    public UdpStunClient()
+    public UdpStunClient() throws IOException
         {
         this (pickStunServerInetAddress());
         }
@@ -426,14 +426,30 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         return false;
         }
     
-    private static InetSocketAddress pickStunServerInetAddress()
+    private static InetSocketAddress pickStunServerInetAddress() 
+        throws IOException
         {
         return pickStunServerInetAddress(null);
         }
     
     private static InetSocketAddress pickStunServerInetAddress(
-        final InetSocketAddress skipAddress)
+        final InetSocketAddress skipAddress) throws IOException 
         {
+        final SrvUtil util = new SrvUtilImpl();
+        final Collection<InetSocketAddress> addresses = 
+            util.getAddresses("_stun._udp.littleshoot.org");
+        
+        if (addresses.isEmpty())
+            {
+            LOG.warn("Could not get STuN addresses!!");
+            throw new IOException("No STUN addresses returned!");
+            }
+        if (skipAddress != null)
+            {
+            addresses.remove(skipAddress);
+            }
+        return addresses.iterator().next();
+        /*
         final List<String> servers = 
             Arrays.asList(
                 new String[] 
@@ -466,5 +482,6 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         LOG.error("All hosts failed!!: {}", servers);
         throw new IllegalArgumentException("Could not lookup host.  " +
             "No network?  Tried servers: {}" + servers);
+            */
         }
     }
