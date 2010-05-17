@@ -21,7 +21,7 @@ public class StunClientTest
         // We do this a bunch of times because the server selection is random.
         for (int i = 0; i < 20; i++)
             {
-            final UdpStunClient client = new UdpStunClient();
+            final UdpStunClient client = new UdpStunClient("_stun._udp.littleshoot.org");
             final InetSocketAddress srflx = client.getServerReflexiveAddress();
             //System.out.println("Got address: "+srflx);
             assertNotNull("Did not get server reflexive address", srflx);

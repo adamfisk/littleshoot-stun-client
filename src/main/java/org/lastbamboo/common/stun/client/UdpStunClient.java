@@ -81,6 +81,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
 
     private final Collection<IoSession> m_sessions = 
         new LinkedList<IoSession>();
+
+    private final String m_srvAddress;
     
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
@@ -94,9 +96,10 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      */
     public UdpStunClient(
         final StunTransactionTracker<StunMessage> transactionTracker,
-        final IoHandler ioHandler) throws IOException
+        final IoHandler ioHandler, final String srvAddress) throws IOException
         {
-        this (null, pickStunServerInetAddress(), transactionTracker, ioHandler);
+        this (null, pickStunServerInetAddress(srvAddress), transactionTracker, 
+            ioHandler, srvAddress);
         }
     
     /**
@@ -104,18 +107,19 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      * 
      * @param stunServerAddress The address of the STUN server to connect to.
      */
-    public UdpStunClient(final InetSocketAddress stunServerAddress)
+    public UdpStunClient(final InetSocketAddress stunServerAddress, 
+        final String srvAddress)
         {
-        this (null, stunServerAddress, null, null);
+        this (null, stunServerAddress, null, null, srvAddress);
         }
     
     /**
      * Creates a new STUN client that connects to the specified STUN server.
      * @throws IOException If we can't get a STUN server address. 
      */
-    public UdpStunClient() throws IOException
+    public UdpStunClient(final String srvAddress) throws IOException
         {
-        this (pickStunServerInetAddress());
+        this (pickStunServerInetAddress(srvAddress), srvAddress);
         }
     
     /**
@@ -127,13 +131,14 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     private UdpStunClient(final InetSocketAddress localAddress,
         final InetSocketAddress stunServerAddress,
         final StunTransactionTracker<StunMessage> transactionTracker, 
-        final IoHandler ioHandler)
+        final IoHandler ioHandler, final String srvAddress)
         {
         if (stunServerAddress == null)
             {
             LOG.error("Null STUN server");
             throw new NullPointerException("Null STUN server");
             }
+        this.m_srvAddress = srvAddress;
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
         m_originalLocalAddress = localAddress;
@@ -336,7 +341,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             if (isa == null)
                 {
                 this.m_stunServerAddress = 
-                    pickStunServerInetAddress(this.m_stunServerAddress);
+                    pickStunServerInetAddress(this.m_stunServerAddress, 
+                        this.m_srvAddress);
                 continue;
                 }
             return isa;
@@ -426,18 +432,19 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         return false;
         }
     
-    private static InetSocketAddress pickStunServerInetAddress() 
-        throws IOException
+    private static InetSocketAddress pickStunServerInetAddress(
+        final String srvAddress) throws IOException
         {
-        return pickStunServerInetAddress(null);
+        return pickStunServerInetAddress(null, srvAddress);
         }
     
     private static InetSocketAddress pickStunServerInetAddress(
-        final InetSocketAddress skipAddress) throws IOException 
+        final InetSocketAddress skipAddress, final String srvAddress) 
+        throws IOException 
         {
         final SrvUtil util = new SrvUtilImpl();
         final Collection<InetSocketAddress> addresses = 
-            util.getAddresses("_stun._udp.littleshoot.org");
+            util.getAddresses(srvAddress);
         
         if (addresses.isEmpty())
             {
