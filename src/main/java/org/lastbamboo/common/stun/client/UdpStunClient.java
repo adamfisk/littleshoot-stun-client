@@ -9,18 +9,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.id.uuid.UUID;
-import org.littleshoot.mina.common.ByteBuffer;
-import org.littleshoot.mina.common.ConnectFuture;
-import org.littleshoot.mina.common.ExecutorThreadModel;
-import org.littleshoot.mina.common.IoConnector;
-import org.littleshoot.mina.common.IoHandler;
-import org.littleshoot.mina.common.IoServiceListener;
-import org.littleshoot.mina.common.IoSession;
-import org.littleshoot.mina.common.SimpleByteBufferAllocator;
-import org.littleshoot.mina.filter.codec.ProtocolCodecFactory;
-import org.littleshoot.mina.filter.codec.ProtocolCodecFilter;
-import org.littleshoot.mina.transport.socket.nio.DatagramConnector;
-import org.littleshoot.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.lastbamboo.common.stun.stack.StunIoHandler;
 import org.lastbamboo.common.stun.stack.StunProtocolCodecFactory;
 import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
@@ -35,8 +23,19 @@ import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
 import org.lastbamboo.common.stun.stack.transaction.StunTransactionTrackerImpl;
-import org.lastbamboo.common.util.SrvUtil;
-import org.lastbamboo.common.util.SrvUtilImpl;
+import org.lastbamboo.common.util.CandidateProvider;
+import org.littleshoot.mina.common.ByteBuffer;
+import org.littleshoot.mina.common.ConnectFuture;
+import org.littleshoot.mina.common.ExecutorThreadModel;
+import org.littleshoot.mina.common.IoConnector;
+import org.littleshoot.mina.common.IoHandler;
+import org.littleshoot.mina.common.IoServiceListener;
+import org.littleshoot.mina.common.IoSession;
+import org.littleshoot.mina.common.SimpleByteBufferAllocator;
+import org.littleshoot.mina.filter.codec.ProtocolCodecFactory;
+import org.littleshoot.mina.filter.codec.ProtocolCodecFilter;
+import org.littleshoot.mina.transport.socket.nio.DatagramConnector;
+import org.littleshoot.mina.transport.socket.nio.DatagramConnectorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,17 +48,9 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     private static final Logger LOG = 
         LoggerFactory.getLogger(UdpStunClient.class);
     
-    /**
-     * The default STUN port.
-     */
-    private static final int STUN_PORT = 3478;
-        
     private final Collection<IoServiceListener> m_ioServiceListeners =
         new LinkedList<IoServiceListener>();
 
-    /**
-     * This is the address of the STUN server to connect to.
-     */
     private InetSocketAddress m_stunServerAddress;
     
     private final IoHandler m_ioHandler;
@@ -82,8 +73,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     private final Collection<IoSession> m_sessions = 
         new LinkedList<IoSession>();
 
-    private final String m_srvAddress;
-    
+    private final CandidateProvider<InetSocketAddress> m_stunServerCandidateProvider;
+
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
      * of obtaining "server reflexive" and "host" candidates.  We don't use
@@ -92,34 +83,30 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      * 
      * @param transactionTracker The transaction tracker to use.
      * @param ioHandler The {@link IoHandler} to use.
+     * @param stunServerCandidateProvider Provider for STUN server addresses.
      * @throws IOException If we can't get a STUN server address.
      */
     public UdpStunClient(
         final StunTransactionTracker<StunMessage> transactionTracker,
-        final IoHandler ioHandler, final String srvAddress) throws IOException
+        final IoHandler ioHandler, 
+        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
+        throws IOException
         {
-        this (null, pickStunServerInetAddress(srvAddress), transactionTracker, 
-            ioHandler, srvAddress);
+        this (null, stunServerCandidateProvider, transactionTracker, 
+            ioHandler);
         }
     
     /**
      * Creates a new STUN client that connects to the specified STUN server.
-     * 
-     * @param stunServerAddress The address of the STUN server to connect to.
-     */
-    public UdpStunClient(final InetSocketAddress stunServerAddress, 
-        final String srvAddress)
-        {
-        this (null, stunServerAddress, null, null, srvAddress);
-        }
-    
-    /**
-     * Creates a new STUN client that connects to the specified STUN server.
+     * @param stunServerCandidateProvider Class that provides STUN servers to
+     * use.
      * @throws IOException If we can't get a STUN server address. 
      */
-    public UdpStunClient(final String srvAddress) throws IOException
+    public UdpStunClient(
+        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
+        throws IOException
         {
-        this (pickStunServerInetAddress(srvAddress), srvAddress);
+        this (null, stunServerCandidateProvider, null, null);
         }
     
     /**
@@ -127,18 +114,19 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      * 
      * @param stunServerAddress The address of the STUN server to connect to.
      * @param connectTimeout The timeout to wait for connections.
+     * @throws IOException 
      */
     private UdpStunClient(final InetSocketAddress localAddress,
-        final InetSocketAddress stunServerAddress,
+        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider,
         final StunTransactionTracker<StunMessage> transactionTracker, 
-        final IoHandler ioHandler, final String srvAddress)
+        final IoHandler ioHandler) throws IOException
         {
-        if (stunServerAddress == null)
+        if (stunServerCandidateProvider == null)
             {
-            LOG.error("Null STUN server");
-            throw new NullPointerException("Null STUN server");
+            LOG.error("Null STUN server provider");
+            throw new NullPointerException("Null STUN server provider");
             }
-        this.m_srvAddress = srvAddress;
+        this.m_stunServerCandidateProvider = stunServerCandidateProvider;
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
         m_originalLocalAddress = localAddress;
@@ -151,7 +139,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             this.m_transactionTracker = transactionTracker;
             }
         
-        m_stunServerAddress = stunServerAddress;
+        m_stunServerAddress = pickStunServerInetAddress(stunServerCandidateProvider);
         
         if (ioHandler == null)
             {
@@ -340,9 +328,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             final InetSocketAddress isa = message.accept(visitor);
             if (isa == null)
                 {
-                this.m_stunServerAddress = 
-                    pickStunServerInetAddress(this.m_stunServerAddress, 
-                        this.m_srvAddress);
+                this.m_stunServerAddress = pickStunServerInetAddress(
+                    this.m_stunServerCandidateProvider);
                 continue;
                 }
             return isa;
@@ -433,18 +420,19 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         }
     
     private static InetSocketAddress pickStunServerInetAddress(
-        final String srvAddress) throws IOException
+        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
+        throws IOException
         {
-        return pickStunServerInetAddress(null, srvAddress);
+        return pickStunServerInetAddress(null, stunServerCandidateProvider);
         }
     
     private static InetSocketAddress pickStunServerInetAddress(
-        final InetSocketAddress skipAddress, final String srvAddress) 
+        final InetSocketAddress skipAddress, 
+        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
         throws IOException 
         {
-        final SrvUtil util = new SrvUtilImpl();
         final Collection<InetSocketAddress> addresses = 
-            util.getAddresses(srvAddress);
+            stunServerCandidateProvider.getCandidates();
         
         if (addresses.isEmpty())
             {
