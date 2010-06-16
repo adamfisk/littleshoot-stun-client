@@ -126,6 +126,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
             LOG.error("Null STUN server provider");
             throw new NullPointerException("Null STUN server provider");
             }
+        LOG.info("Creating UDP STUN CLIENT");
         this.m_stunServerCandidateProvider = stunServerCandidateProvider;
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
@@ -296,6 +297,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         {
         for (int i = 0; i < 3; i++)
             {
+            LOG.info("Getting server reflexive address from: {}", 
+                this.m_stunServerAddress);
             final BindingRequest br = new BindingRequest();
             final StunMessage message = write(br, this.m_stunServerAddress);
             final StunMessageVisitor<InetSocketAddress> visitor = 
