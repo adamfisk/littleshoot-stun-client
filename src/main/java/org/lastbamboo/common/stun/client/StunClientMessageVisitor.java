@@ -18,8 +18,7 @@ import org.slf4j.LoggerFactory;
 public class StunClientMessageVisitor<T> extends StunMessageVisitorAdapter<T>
     {
 
-    private final Logger m_log = 
-        LoggerFactory.getLogger(StunClientMessageVisitor.class);
+    private final Logger m_log =  LoggerFactory.getLogger(getClass());
     protected final StunTransactionTracker<T> m_transactionTracker;
 
     /**
