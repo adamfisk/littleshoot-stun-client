@@ -3,6 +3,7 @@ package org.lastbamboo.common.stun.client;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
@@ -42,8 +43,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Abstract STUN client.  Subclasses typically define transports.
  */
-public class UdpStunClient implements StunClient, StunTransactionListener
-    {
+public class UdpStunClient implements StunClient, StunTransactionListener {
 
     private static final Logger LOG = 
         LoggerFactory.getLogger(UdpStunClient.class);
@@ -73,7 +73,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener
     private final Collection<IoSession> m_sessions = 
         new LinkedList<IoSession>();
 
-    private final CandidateProvider<InetSocketAddress> m_stunServerCandidateProvider;
+    private Collection<InetSocketAddress> m_stunServers;
 
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
@@ -90,24 +90,34 @@ public class UdpStunClient implements StunClient, StunTransactionListener
         final StunTransactionTracker<StunMessage> transactionTracker,
         final IoHandler ioHandler, 
         final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
-        throws IOException
-        {
-        this (null, stunServerCandidateProvider, transactionTracker, 
-            ioHandler);
-        }
+            throws IOException {
+        this(null, stunServerCandidateProvider.getCandidates(),
+                transactionTracker, ioHandler);
+    }
     
     /**
-     * Creates a new STUN client that connects to the specified STUN server.
+     * Creates a new STUN client that connects to the specified STUN servers.
      * @param stunServerCandidateProvider Class that provides STUN servers to
      * use.
      * @throws IOException If we can't get a STUN server address. 
      */
     public UdpStunClient(
         final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
-        throws IOException
-        {
-        this (null, stunServerCandidateProvider, null, null);
-        }
+            throws IOException {
+        this(null, stunServerCandidateProvider.getCandidates(), null, null);
+    }
+    
+    /**
+     * Creates a new STUN client that connects to the specified STUN servers.
+     * @param stunServerCandidateProvider Class that provides STUN servers to
+     * use.
+     * @throws IOException If we can't get a STUN server address. 
+     */
+    public UdpStunClient(final InetSocketAddress... stunServers) 
+        throws IOException {
+        this(null, Arrays.asList(stunServers), null, null);
+    }
+
     
     /**
      * Creates a new STUN client that connects to the specified STUN server.
@@ -117,369 +127,281 @@ public class UdpStunClient implements StunClient, StunTransactionListener
      * @throws IOException 
      */
     private UdpStunClient(final InetSocketAddress localAddress,
-        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider,
-        final StunTransactionTracker<StunMessage> transactionTracker, 
-        final IoHandler ioHandler) throws IOException
-        {
-        if (stunServerCandidateProvider == null)
-            {
+            final Collection<InetSocketAddress> stunServers,
+            final StunTransactionTracker<StunMessage> transactionTracker,
+            final IoHandler ioHandler) throws IOException {
+        if (stunServers == null) {
             LOG.error("Null STUN server provider");
             throw new NullPointerException("Null STUN server provider");
-            }
+        }
         LOG.info("Creating UDP STUN CLIENT");
-        this.m_stunServerCandidateProvider = stunServerCandidateProvider;
+        this.m_stunServers = stunServers;
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
         m_originalLocalAddress = localAddress;
-        if (transactionTracker == null)
-            {
+        if (transactionTracker == null) {
             this.m_transactionTracker = new StunTransactionTrackerImpl();
-            }
-        else
-            {
+        } else {
             this.m_transactionTracker = transactionTracker;
-            }
-        
-        m_stunServerAddress = pickStunServerInetAddress(stunServerCandidateProvider);
-        
-        if (ioHandler == null)
-            {
-            final StunMessageVisitorFactory messageVisitorFactoryToUse = 
-                new StunClientMessageVisitorFactory(this.m_transactionTracker);
-            m_ioHandler = new StunIoHandler(messageVisitorFactoryToUse);
-            }
-        else
-            {
-            m_ioHandler = ioHandler;
-            }
         }
-    
-    public void connect() throws IOException
-        {
-        final IoSession session = 
-            connect(m_originalLocalAddress, m_stunServerAddress); 
-        
+
+        m_stunServerAddress = pickStunServerInetAddress(stunServers);
+
+        if (ioHandler == null) {
+            final StunMessageVisitorFactory messageVisitorFactoryToUse = 
+                new StunClientMessageVisitorFactory(
+                    this.m_transactionTracker);
+            m_ioHandler = new StunIoHandler(messageVisitorFactoryToUse);
+        } else {
+            m_ioHandler = ioHandler;
+        }
+    }
+   
+    public void connect() throws IOException {
+        final IoSession session = connect(m_originalLocalAddress,
+                m_stunServerAddress);
+
         // We set the local address here because the original could be null
         // to bind to an ephemeral port.
         this.m_localAddress = (InetSocketAddress) session.getLocalAddress();
-        }
-    
-    private final IoSession connect(final InetSocketAddress localAddress, 
-        final InetSocketAddress stunServerAddress) throws IOException
-        {
+    }
+
+    private final IoSession connect(final InetSocketAddress localAddress,
+            final InetSocketAddress stunServerAddress) throws IOException {
         // We can't connect twice to the same 5-tuple, so check to verify we're
         // not reconnecting to the remote host we're already connected to.
-        if (this.m_currentIoSession != null && 
-            this.m_currentIoSession.getRemoteAddress().equals(stunServerAddress))
-            {
+        if (this.m_currentIoSession != null
+                && this.m_currentIoSession.getRemoteAddress().equals(
+                        stunServerAddress)) {
             return this.m_currentIoSession;
-            }
-        
-        final ProtocolCodecFactory codecFactory = 
-            new StunProtocolCodecFactory();
-        final ProtocolCodecFilter stunFilter = 
-            new ProtocolCodecFilter(codecFactory);
-        
+        }
+
+        final ProtocolCodecFactory codecFactory = new StunProtocolCodecFactory();
+        final ProtocolCodecFilter stunFilter = new ProtocolCodecFilter(
+                codecFactory);
+
         final IoConnector connector = createConnector();
         connector.getFilterChain().addLast("stunFilter", stunFilter);
-        
-        if (this.m_ioServiceListeners.isEmpty())
-            {
-            LOG.debug("No service listeners for: {}",
-                getClass().getSimpleName());
-            }
-        synchronized (this.m_ioServiceListeners)
-            {
-            for (final IoServiceListener sl : this.m_ioServiceListeners)
-                {
+
+        if (this.m_ioServiceListeners.isEmpty()) {
+            LOG.debug("No service listeners for: {}", getClass()
+                    .getSimpleName());
+        }
+        synchronized (this.m_ioServiceListeners) {
+            for (final IoServiceListener sl : this.m_ioServiceListeners) {
                 connector.addListener(sl);
-                }
             }
+        }
         LOG.debug("Connecting to: {}", stunServerAddress);
-        final ConnectFuture cf = 
-            connector.connect(stunServerAddress, localAddress, m_ioHandler);
+        final ConnectFuture cf = connector.connect(stunServerAddress,
+                localAddress, m_ioHandler);
         LOG.debug("About to join");
         cf.join();
         LOG.debug("Connected to: {}", stunServerAddress);
         final IoSession session = cf.getSession();
-        if (session == null)
-            {
-            throw new IOException("Could not get session with: "+
-                stunServerAddress);
-            }
+        if (session == null) {
+            throw new IOException("Could not get session with: "
+                    + stunServerAddress);
+        }
         this.m_sessions.add(session);
         this.m_currentIoSession = session;
         return session;
-        }
-    
-    public InetSocketAddress getHostAddress()
-        {
-        return m_localAddress;
-        }
-    
-    public InetAddress getStunServerAddress()
-        {
-        return this.m_stunServerAddress.getAddress();
-        }
+    }
 
-    protected void waitIfNoResponse(final StunMessage request, 
-        final long waitTime)
-        {
-        LOG.debug("Waiting "+waitTime+" milliseconds...");
-        if (waitTime == 0L) return;
-        if (!m_idsToResponses.containsKey(request.getTransactionId()))
-            {
-            try
-                {
+    public InetSocketAddress getHostAddress() {
+        return m_localAddress;
+    }
+
+    public InetAddress getStunServerAddress() {
+        return this.m_stunServerAddress.getAddress();
+    }
+
+    protected void waitIfNoResponse(final StunMessage request,
+            final long waitTime) {
+        LOG.debug("Waiting " + waitTime + " milliseconds...");
+        if (waitTime == 0L)
+            return;
+        if (!m_idsToResponses.containsKey(request.getTransactionId())) {
+            try {
                 LOG.debug("Actually waiting...");
                 request.wait(waitTime);
-                }
-            catch (final InterruptedException e)
-                {
+            } catch (final InterruptedException e) {
                 LOG.error("Unexpected interrupt", e);
-                }
             }
         }
+    }
 
     public Object onTransactionFailed(final StunMessage request,
-        final StunMessage response)
-        {
+            final StunMessage response) {
         return notifyWaiters(request, response);
-        }
-    
-    public Object onTransactionSucceeded(final StunMessage request, 
-        final StunMessage response)
-        {
-        return notifyWaiters(request, response);
-        }
+    }
 
-    private Object notifyWaiters(StunMessage request, StunMessage response)
-        {
-        synchronized (request)
-            {
+    public Object onTransactionSucceeded(final StunMessage request,
+            final StunMessage response) {
+        return notifyWaiters(request, response);
+    }
+
+    private Object notifyWaiters(StunMessage request, StunMessage response) {
+        synchronized (request) {
             this.m_idsToResponses.put(request.getTransactionId(), response);
             request.notify();
-            }
-        return null;
         }
-    
+        return null;
+    }
+
     public final void addIoServiceListener(
-        final IoServiceListener serviceListener)
-        {
+            final IoServiceListener serviceListener) {
         LOG.debug("Adding service listener for: {}", this);
         this.m_ioServiceListeners.add(serviceListener);
-        }
+    }
 
-    public void close()
-        {
+    public void close() {
         LOG.debug("Closing sessions...");
-        synchronized (m_sessions)
-            {
-            for (final IoSession session : m_sessions)
-                {
+        synchronized (m_sessions) {
+            for (final IoSession session : m_sessions) {
                 LOG.debug("Closing: {}", session);
                 session.close();
-                }
             }
         }
-    
-    private IoConnector createConnector()
-        {
+    }
+
+    private IoConnector createConnector() {
         final DatagramConnector connector = new DatagramConnector();
         final DatagramConnectorConfig cfg = connector.getDefaultConfig();
         cfg.getSessionConfig().setReuseAddress(true);
-        cfg.setThreadModel(
-            ExecutorThreadModel.getInstance(getClass().getSimpleName()));
+        cfg.setThreadModel(ExecutorThreadModel.getInstance(getClass()
+                .getSimpleName()));
         return connector;
-        }
-    
-    public InetSocketAddress getServerReflexiveAddress() throws IOException
-        {
-        for (int i = 0; i < 3; i++)
-            {
-            LOG.info("Getting server reflexive address from: {}", 
-                this.m_stunServerAddress);
+    }
+
+    public InetSocketAddress getServerReflexiveAddress() throws IOException {
+        for (int i = 0; i < 3; i++) {
+            LOG.info("Getting server reflexive address from: {}",
+                    this.m_stunServerAddress);
             final BindingRequest br = new BindingRequest();
             final StunMessage message = write(br, this.m_stunServerAddress);
-            final StunMessageVisitor<InetSocketAddress> visitor = 
-                new StunMessageVisitorAdapter<InetSocketAddress>()
-                {
+            final StunMessageVisitor<InetSocketAddress> visitor = new StunMessageVisitorAdapter<InetSocketAddress>() {
                 @Override
                 public InetSocketAddress visitBindingSuccessResponse(
-                    final BindingSuccessResponse response)
-                    {
+                        final BindingSuccessResponse response) {
                     return response.getMappedAddress();
-                    }
-    
+                }
+
                 @Override
                 public InetSocketAddress visitBindingErrorResponse(
-                    final BindingErrorResponse response)
-                    {
-                    LOG.warn("Received Binding Error Response: "+response);
+                        final BindingErrorResponse response) {
+                    LOG.warn("Received Binding Error Response: " + response);
                     return null;
-                    }
-    
+                }
+
                 @Override
                 public InetSocketAddress visitConnectErrorMesssage(
-                    final ConnectErrorStunMessage error)
-                    {
+                        final ConnectErrorStunMessage error) {
                     LOG.warn("Received ICMP error: {}", error);
                     return null;
-                    }
-                };
-              
-            final InetSocketAddress isa = message.accept(visitor);
-            if (isa == null)
-                {
-                this.m_stunServerAddress = pickStunServerInetAddress(
-                    this.m_stunServerCandidateProvider);
-                continue;
                 }
-            return isa;
+            };
+
+            final InetSocketAddress isa = message.accept(visitor);
+            if (isa == null) {
+                this.m_stunServerAddress = pickStunServerInetAddress(this.m_stunServers);
+                continue;
             }
-        
+            return isa;
+        }
+
         // If we get here, all our attempts failed. Maybe the client's offline?
         throw new IOException("Could not get server reflexive address!");
-        }
+    }
  
-    public StunMessage write(final BindingRequest request, 
-        final InetSocketAddress remoteAddress) throws IOException
-        {
-        // Use an RTO of 100ms, as discussed in 
-        // draft-ietf-behave-rfc3489bis-06.txt section 7.1.  Note we just 
+    public StunMessage write(final BindingRequest request,
+            final InetSocketAddress remoteAddress) throws IOException {
+        // Use an RTO of 100ms, as discussed in
+        // draft-ietf-behave-rfc3489bis-06.txt section 7.1. Note we just
         // use this value and don't cache previously discovered values for
         // the RTO.
         final long rto = 100L;
         return write(request, remoteAddress, rto);
-        }
+    }
 
-    public StunMessage write(final BindingRequest request, 
-        final InetSocketAddress remoteAddress, final long rto) 
-        throws IOException
-        {
+    public StunMessage write(final BindingRequest request,
+            final InetSocketAddress remoteAddress, final long rto)
+            throws IOException {
         // Note we've typically already "connected" around creation time with
         // the connect method, but it's cheap with UDP.
         final IoSession session = connect(this.m_localAddress, remoteAddress);
-        
+
         // This method will retransmit the same request multiple times because
-        // it's being sent unreliably.  All of these requests will be 
+        // it's being sent unreliably. All of these requests will be
         // identical, using the same transaction ID.
         final UUID id = request.getTransactionId();
-        
-        this.m_transactionTracker.addTransaction(request, this, 
-            this.m_localAddress, remoteAddress);
-        
+
+        this.m_transactionTracker.addTransaction(request, this,
+                this.m_localAddress, remoteAddress);
+
         int requests = 0;
-        
+
         long waitTime = 0L;
-        synchronized (request)
-            {
-            while (!m_idsToResponses.containsKey(id) && requests < 7)
-                {
+        synchronized (request) {
+            while (!m_idsToResponses.containsKey(id) && requests < 7) {
                 waitIfNoResponse(request, waitTime);
-                
-                // See draft-ietf-behave-rfc3489bis-06.txt section 7.1.  We
-                // continually send the same request until we receive a 
+
+                // See draft-ietf-behave-rfc3489bis-06.txt section 7.1. We
+                // continually send the same request until we receive a
                 // response, never sending more that 7 requests and using
-                // an expanding interval between requests based on the 
-                // estimated round-trip-time to the server.  This is because
+                // an expanding interval between requests based on the
+                // estimated round-trip-time to the server. This is because
                 // some requests can be lost with UDP.
                 session.write(request);
-                
+
                 // Wait a little longer with each send.
                 waitTime = (2 * waitTime) + rto;
-                
+
                 requests++;
-                }
-            
+            }
+
             // Now we wait for 1.6 seconds after the last request was sent.
-            // If we still don't receive a response, then the transaction 
-            // has failed.  
+            // If we still don't receive a response, then the transaction
+            // has failed.
             waitIfNoResponse(request, 1600);
-            }
-        
-        if (m_idsToResponses.containsKey(id))
-            {
-            final StunMessage response = this.m_idsToResponses.get(id);
-            return response;
-            }
-        
-        LOG.warn("Did not get response from: "+remoteAddress);
-        return new NullStunMessage();
         }
 
-    public InetSocketAddress getRelayAddress()
-        {
+        if (m_idsToResponses.containsKey(id)) {
+            final StunMessage response = this.m_idsToResponses.get(id);
+            return response;
+        }
+
+        LOG.warn("Did not get response from: " + remoteAddress);
+        return new NullStunMessage();
+    }
+
+    public InetSocketAddress getRelayAddress() {
         // We don't support UDP relays at this time.
         LOG.warn("Attempted to get a UDP relay!!");
         return null;
-        }
-    
-    public boolean hostPortMapped()
-        {
+    }
+
+    public boolean hostPortMapped() {
         // We don't map ports for clients (only for classes that also accept
         // incoming connections).
         return false;
-        }
-    
+    }
+
     private static InetSocketAddress pickStunServerInetAddress(
-        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
-        throws IOException
-        {
-        return pickStunServerInetAddress(null, stunServerCandidateProvider);
-        }
-    
+            final Collection<InetSocketAddress> stunServers) throws IOException {
+        return pickStunServerInetAddress(null, stunServers);
+    }
+
     private static InetSocketAddress pickStunServerInetAddress(
-        final InetSocketAddress skipAddress, 
-        final CandidateProvider<InetSocketAddress> stunServerCandidateProvider) 
-        throws IOException 
-        {
-        final Collection<InetSocketAddress> addresses = 
-            stunServerCandidateProvider.getCandidates();
-        
-        if (addresses.isEmpty())
-            {
+            final InetSocketAddress skipAddress,
+            final Collection<InetSocketAddress> stunServers) throws IOException {
+        if (stunServers.isEmpty()) {
             LOG.warn("Could not get STuN addresses!!");
             throw new IOException("No STUN addresses returned!");
-            }
-        if (skipAddress != null)
-            {
-            addresses.remove(skipAddress);
-            }
-        return addresses.iterator().next();
-        /*
-        final List<String> servers = 
-            Arrays.asList(
-                new String[] 
-                    {
-                    //"stunserver.org",
-                    "stun01.sipphone.com",
-                    "stun.ideasip.com",
-                    "stun.ekiga.net",
-                    }
-                );
-        Collections.shuffle(servers);
-        for (final String server : servers)
-            {
-            try
-                {
-                final InetSocketAddress address = 
-                    new InetSocketAddress(InetAddress.getByName(server), 
-                        STUN_PORT);
-                if (skipAddress != null && address.equals(skipAddress))
-                    continue;
-                else
-                    return address;
-                }
-            catch (final UnknownHostException e)
-                {
-                LOG.error("Could not lookup host: "+server, e);
-                }
-            }
-        
-        LOG.error("All hosts failed!!: {}", servers);
-        throw new IllegalArgumentException("Could not lookup host.  " +
-            "No network?  Tried servers: {}" + servers);
-            */
         }
+        if (skipAddress != null) {
+            stunServers.remove(skipAddress);
+        }
+        return stunServers.iterator().next();
     }
+}
