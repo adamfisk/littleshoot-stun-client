@@ -71,4 +71,32 @@ public class StunClientTest {
             }
         }
     }
+    
+    @Test
+    public void testRanking() throws Exception {
+        final int port = StunConstants.STUN_PORT;
+        
+        // See http://www.voip-info.org/wiki/view/STUN
+        final InetSocketAddress[] servers = {
+            //new InetSocketAddress("stun.ekiga.net", port),
+            //new InetSocketAddress("stunserver.org", port),
+            //new InetSocketAddress("stun.fwdnet.net", port),
+                
+            // Re-enable these to see dynamic ranking in action..
+            new InetSocketAddress("stun.ideasip.com", port),
+            new InetSocketAddress("stun01.sipphone.com", port),
+            new InetSocketAddress("stun.softjoys.com", port),
+            new InetSocketAddress("stun.voipbuster.com", port),
+            new InetSocketAddress("stun.voxgratia.org", port),
+            new InetSocketAddress("stun.xten.com", port),
+            new InetSocketAddress("stun.sipgate.net", 10000),
+            new InetSocketAddress("numb.viagenie.ca", port) 
+        };
+
+        final StunClient sc = new UdpStunClient(servers);
+        sc.connect();
+        for (int i = 0; i < 20; i++) {
+            sc.getServerReflexiveAddress();
+        }
+    }
 }

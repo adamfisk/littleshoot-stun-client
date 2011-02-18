@@ -3,10 +3,13 @@ package org.lastbamboo.common.stun.client;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.id.uuid.UUID;
@@ -49,9 +52,9 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         LoggerFactory.getLogger(UdpStunClient.class);
     
     private final Collection<IoServiceListener> m_ioServiceListeners =
-        new LinkedList<IoServiceListener>();
+        new ArrayList<IoServiceListener>();
 
-    private InetSocketAddress m_stunServerAddress;
+    private RankedStunServer m_stunServer;
     
     private final IoHandler m_ioHandler;
 
@@ -73,7 +76,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
     private final Collection<IoSession> m_sessions = 
         new LinkedList<IoSession>();
 
-    private Collection<InetSocketAddress> m_stunServers;
+    private final Queue<RankedStunServer> m_stunServers = 
+        new PriorityQueue<UdpStunClient.RankedStunServer>();
 
     /**
      * Creates a new STUN client for ICE processing.  This client is capable
@@ -135,7 +139,10 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
             throw new NullPointerException("Null STUN server provider");
         }
         LOG.info("Creating UDP STUN CLIENT");
-        this.m_stunServers = stunServers;
+        for (final InetSocketAddress isa : stunServers) {
+            final RankedStunServer rss = new RankedStunServer(isa);
+            this.m_stunServers.add(rss);
+        }
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
         m_originalLocalAddress = localAddress;
@@ -145,7 +152,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
             this.m_transactionTracker = transactionTracker;
         }
 
-        m_stunServerAddress = pickStunServerInetAddress(stunServers);
+        m_stunServer = pickStunServerInetAddress();
 
         if (ioHandler == null) {
             final StunMessageVisitorFactory messageVisitorFactoryToUse = 
@@ -158,21 +165,34 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
     }
    
     public void connect() throws IOException {
-        final IoSession session = connect(m_originalLocalAddress,
-                m_stunServerAddress);
+        IoSession session;
+        try {
+            session = connect(m_originalLocalAddress, m_stunServer.isa);
+        } catch (final IOException e) {
+            onFailure(m_stunServer);
+            throw e;
+        }
 
         // We set the local address here because the original could be null
         // to bind to an ephemeral port.
         this.m_localAddress = (InetSocketAddress) session.getLocalAddress();
     }
 
+    private void onFailure(final RankedStunServer rss) throws IOException {
+        // It needs to get placed again in the ranking.
+        m_stunServer.failures++;
+        m_stunServers.remove(rss);
+        m_stunServers.add(rss);
+        this.m_stunServer = pickStunServerInetAddress();
+    }
+
     private final IoSession connect(final InetSocketAddress localAddress,
-            final InetSocketAddress stunServerAddress) throws IOException {
+            final InetSocketAddress stunServer) throws IOException {
         // We can't connect twice to the same 5-tuple, so check to verify we're
         // not reconnecting to the remote host we're already connected to.
         if (this.m_currentIoSession != null
                 && this.m_currentIoSession.getRemoteAddress().equals(
-                        stunServerAddress)) {
+                        stunServer)) {
             return this.m_currentIoSession;
         }
 
@@ -192,16 +212,16 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
                 connector.addListener(sl);
             }
         }
-        LOG.debug("Connecting to: {}", stunServerAddress);
-        final ConnectFuture cf = connector.connect(stunServerAddress,
+        LOG.debug("Connecting to: {}", stunServer);
+        final ConnectFuture cf = connector.connect(stunServer,
                 localAddress, m_ioHandler);
         LOG.debug("About to join");
         cf.join();
-        LOG.debug("Connected to: {}", stunServerAddress);
+        LOG.debug("Connected to: {}", stunServer);
         final IoSession session = cf.getSession();
         if (session == null) {
             throw new IOException("Could not get session with: "
-                    + stunServerAddress);
+                    + stunServer);
         }
         this.m_sessions.add(session);
         this.m_currentIoSession = session;
@@ -213,7 +233,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
     }
 
     public InetAddress getStunServerAddress() {
-        return this.m_stunServerAddress.getAddress();
+        return this.m_stunServer.isa.getAddress();
     }
 
     protected void waitIfNoResponse(final StunMessage request,
@@ -277,9 +297,9 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
     public InetSocketAddress getServerReflexiveAddress() throws IOException {
         for (int i = 0; i < this.m_stunServers.size(); i++) {
             LOG.info("Getting server reflexive address from: {}",
-                    this.m_stunServerAddress);
+                    this.m_stunServer);
             final BindingRequest br = new BindingRequest();
-            final StunMessage message = write(br, this.m_stunServerAddress);
+            final StunMessage message = write(br, this.m_stunServer.isa);
             final StunMessageVisitor<InetSocketAddress> visitor = 
                 new StunMessageVisitorAdapter<InetSocketAddress>() {
                 @Override
@@ -305,17 +325,20 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
 
             final InetSocketAddress isa = message.accept(visitor);
             if (isa == null) {
-                this.m_stunServerAddress = 
-                    pickStunServerInetAddress(this.m_stunServers);
+                onFailure(m_stunServer);
                 continue;
             }
+            this.m_stunServer.successes++;
+            
+            // Always keep rotating.
+            this.m_stunServer = pickStunServerInetAddress();
             return isa;
         }
 
         // If we get here, all our attempts failed. Maybe the client's offline?
         throw new IOException("Could not get server reflexive address!");
     }
- 
+    
     public StunMessage write(final BindingRequest request,
         final InetSocketAddress remoteAddress) throws IOException {
         // Use an RTO of 100ms, as discussed in
@@ -389,21 +412,44 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         return false;
     }
 
-    private static InetSocketAddress pickStunServerInetAddress(
-            final Collection<InetSocketAddress> stunServers) throws IOException {
-        return pickStunServerInetAddress(null, stunServers);
+    private RankedStunServer pickStunServerInetAddress() throws IOException {
+        return pickStunServerInetAddress(null);
     }
 
-    private static InetSocketAddress pickStunServerInetAddress(
-            final InetSocketAddress skipAddress,
-            final Collection<InetSocketAddress> stunServers) throws IOException {
-        if (stunServers.isEmpty()) {
+    private RankedStunServer pickStunServerInetAddress(
+            final InetSocketAddress skipAddress) throws IOException {
+        if (m_stunServers.isEmpty()) {
             LOG.warn("Could not get STuN addresses!!");
             throw new IOException("No STUN addresses returned!");
         }
         if (skipAddress != null) {
-            stunServers.remove(skipAddress);
+            m_stunServers.remove(skipAddress);
         }
-        return stunServers.iterator().next();
+        final RankedStunServer rss = m_stunServers.peek();
+        return rss;
+    }
+
+    private class RankedStunServer implements Comparable<RankedStunServer>{
+
+        private final InetSocketAddress isa;
+        private int successes;
+        private int failures;
+        private RankedStunServer(final InetSocketAddress isa) {
+            this.isa = isa;
+        }
+        private int getScore() {
+            return successes - failures;
+        }
+        
+
+        @Override
+        public String toString() {
+            return "RankedStunServer [isa=" + isa + " score="+getScore()+"]";
+        }
+        
+        public int compareTo(final RankedStunServer rss) {
+            final Integer score1 = rss.getScore();
+            return score1.compareTo(getScore());
+        }
     }
 }

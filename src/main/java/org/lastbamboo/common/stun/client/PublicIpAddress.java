@@ -2,7 +2,6 @@ package org.lastbamboo.common.stun.client;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 
 import org.lastbamboo.common.stun.stack.StunConstants;
 import org.slf4j.Logger;
@@ -18,20 +17,6 @@ public class PublicIpAddress {
     private static InetAddress publicIp;
     private static long lastLookupTime;
     
-    private static final InetSocketAddress[] servers = {
-        //new InetSocketAddress("stun.ekiga.net", StunConstants.STUN_PORT),
-        //new InetSocketAddress("stun.fwdnet.net", StunConstants.STUN_PORT),
-        new InetSocketAddress("stun.ideasip.com", StunConstants.STUN_PORT),
-        new InetSocketAddress("stun01.sipphone.com", StunConstants.STUN_PORT),
-        new InetSocketAddress("stun.softjoys.com", StunConstants.STUN_PORT),
-        new InetSocketAddress("stun.voipbuster.com", StunConstants.STUN_PORT),
-        new InetSocketAddress("stun.voxgratia.org", StunConstants.STUN_PORT),
-        new InetSocketAddress("stun.xten.com", StunConstants.STUN_PORT),
-        //new InetSocketAddress("stunserver.org", StunConstants.STUN_PORT),
-        new InetSocketAddress("stun.sipgate.net", 10000),
-        new InetSocketAddress("numb.viagenie.ca", StunConstants.STUN_PORT) 
-    };
-    
     /**
      * Determines the public IP address of this node.
      * 
@@ -43,7 +28,7 @@ public class PublicIpAddress {
             return publicIp;
         }
         try {
-            final StunClient stun = new UdpStunClient(servers);
+            final StunClient stun = new UdpStunClient(StunConstants.SERVERS);
             stun.connect();
             publicIp = stun.getServerReflexiveAddress().getAddress();
             lastLookupTime = System.currentTimeMillis();
