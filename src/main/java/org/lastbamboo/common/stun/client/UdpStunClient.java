@@ -275,12 +275,13 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
     }
 
     public InetSocketAddress getServerReflexiveAddress() throws IOException {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < this.m_stunServers.size(); i++) {
             LOG.info("Getting server reflexive address from: {}",
                     this.m_stunServerAddress);
             final BindingRequest br = new BindingRequest();
             final StunMessage message = write(br, this.m_stunServerAddress);
-            final StunMessageVisitor<InetSocketAddress> visitor = new StunMessageVisitorAdapter<InetSocketAddress>() {
+            final StunMessageVisitor<InetSocketAddress> visitor = 
+                new StunMessageVisitorAdapter<InetSocketAddress>() {
                 @Override
                 public InetSocketAddress visitBindingSuccessResponse(
                         final BindingSuccessResponse response) {
@@ -304,7 +305,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
 
             final InetSocketAddress isa = message.accept(visitor);
             if (isa == null) {
-                this.m_stunServerAddress = pickStunServerInetAddress(this.m_stunServers);
+                this.m_stunServerAddress = 
+                    pickStunServerInetAddress(this.m_stunServers);
                 continue;
             }
             return isa;
@@ -315,7 +317,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
     }
  
     public StunMessage write(final BindingRequest request,
-            final InetSocketAddress remoteAddress) throws IOException {
+        final InetSocketAddress remoteAddress) throws IOException {
         // Use an RTO of 100ms, as discussed in
         // draft-ietf-behave-rfc3489bis-06.txt section 7.1. Note we just
         // use this value and don't cache previously discovered values for
