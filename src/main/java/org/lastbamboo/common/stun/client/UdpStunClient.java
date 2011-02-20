@@ -180,10 +180,18 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
 
     private void onFailure(final RankedStunServer rss) throws IOException {
         // It needs to get placed again in the ranking.
-        m_stunServer.failures++;
-        m_stunServers.remove(rss);
-        m_stunServers.add(rss);
+        if (m_stunServer.failures < 5) {
+            m_stunServer.failures++;
+            m_stunServers.remove(rss);
+            m_stunServers.add(rss);
+        }
         this.m_stunServer = pickStunServerInetAddress();
+    }
+    
+    private void onSuccess(final RankedStunServer m_stunServer2) {
+        if (m_stunServer.successes < 5) {
+            this.m_stunServer.successes++;
+        }
     }
 
     private final IoSession connect(final InetSocketAddress localAddress,
@@ -328,7 +336,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
                 onFailure(m_stunServer);
                 continue;
             }
-            this.m_stunServer.successes++;
+            onSuccess(this.m_stunServer);
             
             // Always keep rotating.
             this.m_stunServer = pickStunServerInetAddress();
@@ -338,7 +346,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         // If we get here, all our attempts failed. Maybe the client's offline?
         throw new IOException("Could not get server reflexive address!");
     }
-    
+
     public StunMessage write(final BindingRequest request,
         final InetSocketAddress remoteAddress) throws IOException {
         // Use an RTO of 100ms, as discussed in
