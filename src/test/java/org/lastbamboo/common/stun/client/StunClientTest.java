@@ -8,10 +8,10 @@ import java.net.InetSocketAddress;
 
 import org.junit.Test;
 import org.lastbamboo.common.stun.stack.StunConstants;
-import org.lastbamboo.common.util.CandidateProvider;
-import org.lastbamboo.common.util.SrvCandidateProvider;
-import org.lastbamboo.common.util.SrvUtil;
-import org.lastbamboo.common.util.SrvUtilImpl;
+import org.littleshoot.util.CandidateProvider;
+import org.littleshoot.util.SrvCandidateProvider;
+import org.littleshoot.util.SrvUtil;
+import org.littleshoot.util.SrvUtilImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

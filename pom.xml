@@ -25,12 +25,12 @@
             <groupId>org.lastbamboo</groupId>
             <artifactId>lastbamboo-common-stun-stack</artifactId>
             </dependency>
-              
+
         <dependency>
-            <groupId>org.lastbamboo</groupId>
-            <artifactId>lastbamboo-common-util-common</artifactId>
-            </dependency>
-     
+            <groupId>org.littleshoot</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
+ 
     </dependencies>
 
 </project>
