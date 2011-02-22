@@ -13,20 +13,20 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.id.uuid.UUID;
-import org.lastbamboo.common.stun.stack.StunIoHandler;
-import org.lastbamboo.common.stun.stack.StunProtocolCodecFactory;
-import org.lastbamboo.common.stun.stack.message.BindingErrorResponse;
-import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.BindingSuccessResponse;
-import org.lastbamboo.common.stun.stack.message.ConnectErrorStunMessage;
-import org.lastbamboo.common.stun.stack.message.NullStunMessage;
-import org.lastbamboo.common.stun.stack.message.StunMessage;
-import org.lastbamboo.common.stun.stack.message.StunMessageVisitor;
-import org.lastbamboo.common.stun.stack.message.StunMessageVisitorAdapter;
-import org.lastbamboo.common.stun.stack.message.StunMessageVisitorFactory;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionListener;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionTracker;
-import org.lastbamboo.common.stun.stack.transaction.StunTransactionTrackerImpl;
+import org.littleshoot.stun.stack.StunIoHandler;
+import org.littleshoot.stun.stack.StunProtocolCodecFactory;
+import org.littleshoot.stun.stack.message.BindingErrorResponse;
+import org.littleshoot.stun.stack.message.BindingRequest;
+import org.littleshoot.stun.stack.message.BindingSuccessResponse;
+import org.littleshoot.stun.stack.message.ConnectErrorStunMessage;
+import org.littleshoot.stun.stack.message.NullStunMessage;
+import org.littleshoot.stun.stack.message.StunMessage;
+import org.littleshoot.stun.stack.message.StunMessageVisitor;
+import org.littleshoot.stun.stack.message.StunMessageVisitorAdapter;
+import org.littleshoot.stun.stack.message.StunMessageVisitorFactory;
+import org.littleshoot.stun.stack.transaction.StunTransactionListener;
+import org.littleshoot.stun.stack.transaction.StunTransactionTracker;
+import org.littleshoot.stun.stack.transaction.StunTransactionTrackerImpl;
 import org.littleshoot.util.CandidateProvider;
 import org.littleshoot.mina.common.ByteBuffer;
 import org.littleshoot.mina.common.ConnectFuture;
@@ -269,7 +269,8 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         return notifyWaiters(request, response);
     }
 
-    private Object notifyWaiters(StunMessage request, StunMessage response) {
+    private Object notifyWaiters(final StunMessage request, 
+        final StunMessage response) {
         synchronized (request) {
             this.m_idsToResponses.put(request.getTransactionId(), response);
             request.notify();

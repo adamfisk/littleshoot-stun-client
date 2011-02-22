@@ -3,9 +3,9 @@ package org.lastbamboo.common.stun.client;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import org.lastbamboo.common.stun.stack.StunAddressProvider;
-import org.lastbamboo.common.stun.stack.message.BindingRequest;
-import org.lastbamboo.common.stun.stack.message.StunMessage;
+import org.littleshoot.stun.stack.StunAddressProvider;
+import org.littleshoot.stun.stack.message.BindingRequest;
+import org.littleshoot.stun.stack.message.StunMessage;
 import org.littleshoot.mina.common.IoServiceListener;
 
 /**

@@ -7,11 +7,9 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import org.junit.Test;
-import org.lastbamboo.common.stun.stack.StunConstants;
+import org.littleshoot.stun.stack.StunConstants;
 import org.littleshoot.util.CandidateProvider;
-import org.littleshoot.util.SrvCandidateProvider;
-import org.littleshoot.util.SrvUtil;
-import org.littleshoot.util.SrvUtilImpl;
+import org.littleshoot.util.DnsSrvCandidateProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,10 +22,13 @@ public class StunClientTest {
 
     @Test
     public void testClient() throws Exception {
-        final SrvUtil srv = new SrvUtilImpl();
+        //final SrvUtil srv = new SrvUtilImpl();
         final CandidateProvider<InetSocketAddress> stunCandidateProvider = 
+            new DnsSrvCandidateProvider("_stun._udp.littleshoot.org");
+        /*
             new SrvCandidateProvider(srv, "_stun._udp.littleshoot.org", 
                 new InetSocketAddress("stun.littleshoot.org", StunConstants.STUN_PORT));
+                */
         // We do this a bunch of times because the server selection is random.
         for (int i = 0; i < 20; i++) {
             final UdpStunClient client = new UdpStunClient(

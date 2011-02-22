@@ -3,7 +3,7 @@ package org.lastbamboo.common.stun.client;
 import java.io.IOException;
 import java.net.InetAddress;
 
-import org.lastbamboo.common.stun.stack.StunConstants;
+import org.littleshoot.stun.stack.StunConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
