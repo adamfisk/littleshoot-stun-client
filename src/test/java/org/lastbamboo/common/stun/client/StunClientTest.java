@@ -48,7 +48,7 @@ public class StunClientTest {
             //new InetSocketAddress("stun.ekiga.net", port),
             //new InetSocketAddress("stun.fwdnet.net", port),
             new InetSocketAddress("stun.ideasip.com", port),
-            new InetSocketAddress("stun01.sipphone.com", port),
+            //new InetSocketAddress("stun01.sipphone.com", port),
             new InetSocketAddress("stun.softjoys.com", port),
             new InetSocketAddress("stun.voipbuster.com", port),
             new InetSocketAddress("stun.voxgratia.org", port),
