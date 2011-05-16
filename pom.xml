@@ -32,60 +32,30 @@
         <url>https://adamfisk@github.com/adamfisk/littleshoot-stun-client.git</url>
     </scm>
 
-    <developers>
-        <developer>
-            <id>adamfisk</id>
-            <name>Adam Fisk</name>
-            <email>a@littleshoot.org</email>
-            <organization>LittleShoot</organization>
-            <organizationUrl>http://www.littleshoot.org/</organizationUrl>
-            <roles><role>Developer</role></roles>
-            <timezone>-5</timezone>
-        </developer>
-    </developers>
-
     <dependencies>
-
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>r08</version>
-        </dependency>
-
-        <dependency>
-            <groupId>commons-discovery</groupId>
-            <artifactId>commons-discovery</artifactId>
-            <version>0.2</version>
-        </dependency>
-
-        <dependency>
-            <groupId>commons-id</groupId>
-            <artifactId>commons-id</artifactId>
-            <version>0.1</version>
-        </dependency>
 
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>mina-port</artifactId>
-            <version>1.0</version>
+            <version>${mina.port.version}</version>
         </dependency> 
 
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>mina-util</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${ls.version}</version>
         </dependency> 
-
+        
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>stun-stack</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${ls.version}</version>
         </dependency> 
 
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>util</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${ls.version}</version>
         </dependency> 
 
         <dependency>
@@ -104,13 +74,13 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
-            <version>1.6.1</version>
+            <version>${slf4j.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.6.1</version>
+            <version>${slf4j.version}</version>
         </dependency>
 
     </dependencies>
