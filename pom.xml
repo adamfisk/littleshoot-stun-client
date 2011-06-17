@@ -37,13 +37,11 @@
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>mina-port</artifactId>
-            <version>${mina.port.version}</version>
         </dependency> 
 
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>mina-util</artifactId>
-            <version>${ls.version}</version>
         </dependency> 
         
         <dependency>
