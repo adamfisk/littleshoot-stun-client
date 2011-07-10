@@ -86,6 +86,8 @@ public class PublicIpAddress {
             log.warn("HTTP error?", e);
         } catch (final IOException e) {
             log.warn("Error connecting?", e);
+        } catch (final Exception e) {
+            log.warn("Some other error?", e);
         } finally {
             get.releaseConnection();
         }
