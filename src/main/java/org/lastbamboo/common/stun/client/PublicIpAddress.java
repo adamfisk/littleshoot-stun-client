@@ -3,6 +3,12 @@ package org.lastbamboo.common.stun.client;
 import java.io.IOException;
 import java.net.InetAddress;
 
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpException;
+import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.lang.StringUtils;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.littleshoot.stun.stack.StunConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +35,8 @@ public class PublicIpAddress {
     private static InetAddress publicIp;
     private static long lastLookupTime;
     
+    private PublicIpAddress() {}
+    
     /**
      * Determines the public IP address of this node.
      * 
@@ -37,6 +45,11 @@ public class PublicIpAddress {
     public static InetAddress getPublicIpAddress() {
         final long now = System.currentTimeMillis();
         if (now - lastLookupTime < 100 * 1000) {
+            return publicIp;
+        }
+        publicIp = wikiMediaLookup();
+        if (publicIp != null) {
+            lastLookupTime = System.currentTimeMillis();
             return publicIp;
         }
         try {
@@ -49,5 +62,33 @@ public class PublicIpAddress {
             log.warn("Could not get server reflexive address", e);
             return null;
         }
+    }
+
+    private static InetAddress wikiMediaLookup() {
+        final HttpClient client = new HttpClient();
+        final GetMethod get = 
+            new GetMethod("http://geoiplookup.wikimedia.org/");
+        get.setFollowRedirects(true);
+        try {
+            final int response = client.executeMethod(get);
+            if (response < 200 || response > 299) {
+                log.warn("Got non-200 level response: "+response);
+                return null;
+            }
+            final String body = new String(get.getResponseBody(), "UTF-8");
+            log.info("Got response body:\n{}", body);
+            
+            final String jsonStr = StringUtils.substringAfter(body, "=").trim();
+            final JSONObject json = (JSONObject) JSONValue.parse(jsonStr);
+            final String inet = (String) json.get("IP");
+            return InetAddress.getByName(inet);
+        } catch (final HttpException e) {
+            log.warn("HTTP error?", e);
+        } catch (final IOException e) {
+            log.warn("Error connecting?", e);
+        } finally {
+            get.releaseConnection();
+        }
+        return null;
     }
 }

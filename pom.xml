@@ -35,6 +35,11 @@
     <dependencies>
 
         <dependency>
+            <groupId>com.googlecode.json-simple</groupId>
+            <artifactId>json-simple</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>mina-port</artifactId>
         </dependency> 
@@ -47,13 +52,11 @@
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>stun-stack</artifactId>
-            <version>${ls.version}</version>
         </dependency> 
 
         <dependency>
             <groupId>org.littleshoot</groupId>
             <artifactId>util</artifactId>
-            <version>${ls.version}</version>
         </dependency> 
     </dependencies>
 </project>
