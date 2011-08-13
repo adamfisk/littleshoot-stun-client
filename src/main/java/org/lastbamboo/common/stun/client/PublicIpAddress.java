@@ -50,6 +50,11 @@ public class PublicIpAddress {
         publicIp = wikiMediaLookup();
         if (publicIp != null) {
             lastLookupTime = System.currentTimeMillis();
+            //return publicIp;
+        }
+        publicIp = ifConfigLookup();
+        if (publicIp != null) {
+            lastLookupTime = System.currentTimeMillis();
             return publicIp;
         }
         try {
@@ -62,6 +67,34 @@ public class PublicIpAddress {
             log.warn("Could not get server reflexive address", e);
             return null;
         }
+    }
+
+    private static InetAddress ifConfigLookup() {
+        final HttpClient client = new HttpClient();
+        final GetMethod get = new GetMethod("http://ifconfig.me");
+        // The service returns just the IP if we pretend we're curl.
+        get.setRequestHeader("User-Agent", 
+            "curl/7.19.7 (universal-apple-darwin10.0) libcurl/7.19.7 OpenSSL/0.9.8r zlib/1.2.3");
+        get.setFollowRedirects(true);
+        try {
+            final int response = client.executeMethod(get);
+            if (response < 200 || response > 299) {
+                log.warn("Got non-200 level response: "+response);
+                return null;
+            }
+            final String body = new String(get.getResponseBody(), "UTF-8");
+            log.info("Got response body:\n{}", body);
+            return InetAddress.getByName(body.trim());
+        } catch (final HttpException e) {
+            log.warn("HTTP error?", e);
+        } catch (final IOException e) {
+            log.warn("Error connecting?", e);
+        } catch (final Exception e) {
+            log.warn("Some other error?", e);
+        } finally {
+            get.releaseConnection();
+        }
+        return null;
     }
 
     private static InetAddress wikiMediaLookup() {
