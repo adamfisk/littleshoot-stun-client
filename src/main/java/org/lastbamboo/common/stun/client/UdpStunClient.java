@@ -222,7 +222,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         }
         LOG.debug("Connecting to: {}", stunServer);
         final ConnectFuture cf = connector.connect(stunServer,
-                localAddress, m_ioHandler);
+            localAddress, m_ioHandler);
         LOG.debug("About to join");
         cf.join();
         LOG.debug("Connected to: {}", stunServer);

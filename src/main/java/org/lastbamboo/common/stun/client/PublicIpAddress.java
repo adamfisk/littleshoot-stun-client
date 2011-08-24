@@ -2,6 +2,7 @@ package org.lastbamboo.common.stun.client;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.nio.channels.UnresolvedAddressException;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -30,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public class PublicIpAddress {
 
-    private static final Logger log = 
+    private static final Logger LOG = 
         LoggerFactory.getLogger(PublicIpAddress.class);
     private static InetAddress publicIp;
     private static long lastLookupTime;
@@ -47,16 +48,9 @@ public class PublicIpAddress {
         if (now - lastLookupTime < 100 * 1000) {
             return publicIp;
         }
-        publicIp = wikiMediaLookup();
-        if (publicIp != null) {
-            lastLookupTime = System.currentTimeMillis();
-            //return publicIp;
-        }
-        publicIp = ifConfigLookup();
-        if (publicIp != null) {
-            lastLookupTime = System.currentTimeMillis();
-            return publicIp;
-        }
+        
+        // Note these will all fail if you don't have a network connection --
+        // that should not be confused with them being blocked. 
         try {
             final StunClient stun = new UdpStunClient(StunConstants.SERVERS);
             stun.connect();
@@ -64,9 +58,21 @@ public class PublicIpAddress {
             lastLookupTime = System.currentTimeMillis();
             return publicIp;
         } catch (final IOException e) {
-            log.warn("Could not get server reflexive address", e);
-            return null;
+            LOG.warn("Could not get server reflexive address", e);
+        } catch (final UnresolvedAddressException e) {
+            LOG.warn("Not connected to the network?", e);
         }
+        publicIp = wikiMediaLookup();
+        if (publicIp != null) {
+            lastLookupTime = System.currentTimeMillis();
+            return publicIp;
+        }
+        publicIp = ifConfigLookup();
+        if (publicIp != null) {
+            lastLookupTime = System.currentTimeMillis();
+            return publicIp;
+        }
+        return null;
     }
 
     private static InetAddress ifConfigLookup() {
@@ -79,18 +85,18 @@ public class PublicIpAddress {
         try {
             final int response = client.executeMethod(get);
             if (response < 200 || response > 299) {
-                log.warn("Got non-200 level response: "+response);
+                LOG.warn("Got non-200 level response: "+response);
                 return null;
             }
             final String body = new String(get.getResponseBody(), "UTF-8");
-            log.info("Got response body:\n{}", body);
+            LOG.info("Got response body:\n{}", body);
             return InetAddress.getByName(body.trim());
         } catch (final HttpException e) {
-            log.warn("HTTP error?", e);
+            LOG.warn("HTTP error?", e);
         } catch (final IOException e) {
-            log.warn("Error connecting?", e);
+            LOG.warn("Error connecting?", e);
         } catch (final Exception e) {
-            log.warn("Some other error?", e);
+            LOG.warn("Some other error?", e);
         } finally {
             get.releaseConnection();
         }
@@ -105,22 +111,22 @@ public class PublicIpAddress {
         try {
             final int response = client.executeMethod(get);
             if (response < 200 || response > 299) {
-                log.warn("Got non-200 level response: "+response);
+                LOG.warn("Got non-200 level response: "+response);
                 return null;
             }
             final String body = new String(get.getResponseBody(), "UTF-8");
-            log.info("Got response body:\n{}", body);
+            LOG.info("Got response body:\n{}", body);
             
             final String jsonStr = StringUtils.substringAfter(body, "=").trim();
             final JSONObject json = (JSONObject) JSONValue.parse(jsonStr);
             final String inet = (String) json.get("IP");
             return InetAddress.getByName(inet);
         } catch (final HttpException e) {
-            log.warn("HTTP error?", e);
+            LOG.warn("HTTP error?", e);
         } catch (final IOException e) {
-            log.warn("Error connecting?", e);
+            LOG.warn("Error connecting?", e);
         } catch (final Exception e) {
-            log.warn("Some other error?", e);
+            LOG.warn("Some other error?", e);
         } finally {
             get.releaseConnection();
         }
