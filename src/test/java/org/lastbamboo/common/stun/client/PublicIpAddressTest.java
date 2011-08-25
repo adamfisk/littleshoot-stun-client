@@ -10,7 +10,7 @@ import org.junit.Test;
 public class PublicIpAddressTest {
 
     @Test public void testPublicIP() throws Exception {
-        final InetAddress address = PublicIpAddress.getPublicIpAddress();
+        final InetAddress address = new PublicIpAddress().getPublicIpAddress();
         assertTrue("Null address?", address != null);
     }
 }

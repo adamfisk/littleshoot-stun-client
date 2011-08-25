@@ -11,6 +11,7 @@ import org.apache.commons.lang.StringUtils;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 import org.littleshoot.stun.stack.StunConstants;
+import org.littleshoot.util.PublicIp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,21 +30,20 @@ import org.slf4j.LoggerFactory;
  *
  * Many thanks to Samy Kamkar!!
  */
-public class PublicIpAddress {
+public class PublicIpAddress implements PublicIp {
 
     private static final Logger LOG = 
         LoggerFactory.getLogger(PublicIpAddress.class);
     private static InetAddress publicIp;
     private static long lastLookupTime;
     
-    private PublicIpAddress() {}
-    
     /**
      * Determines the public IP address of this node.
      * 
      * @return The public IP address for this node.
      */
-    public static InetAddress getPublicIpAddress() {
+    @Override
+    public InetAddress getPublicIpAddress() {
         final long now = System.currentTimeMillis();
         if (now - lastLookupTime < 100 * 1000) {
             return publicIp;
