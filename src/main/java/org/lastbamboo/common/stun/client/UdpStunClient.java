@@ -121,6 +121,17 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         throws IOException {
         this(null, Arrays.asList(stunServers), null, null);
     }
+    
+    /**
+     * Creates a new STUN client that connects to the specified STUN servers.
+     * @param stunServerCandidateProvider Class that provides STUN servers to
+     * use.
+     * @throws IOException If we can't get a STUN server address. 
+     */
+    public UdpStunClient(final Collection<InetSocketAddress> stunServers) 
+        throws IOException {
+        this(null, stunServers, null, null);
+    }
 
     
     /**

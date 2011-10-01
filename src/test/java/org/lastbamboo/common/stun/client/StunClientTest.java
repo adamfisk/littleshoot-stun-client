@@ -45,11 +45,12 @@ public class StunClientTest {
         
         // See http://www.voip-info.org/wiki/view/STUN
         final InetSocketAddress[] servers = {
+            new InetSocketAddress("stun.l.google.com", 19302),
             //new InetSocketAddress("stun.ekiga.net", port),
             //new InetSocketAddress("stun.fwdnet.net", port),
             new InetSocketAddress("stun.ideasip.com", port),
             //new InetSocketAddress("stun01.sipphone.com", port),
-            new InetSocketAddress("stun.softjoys.com", port),
+            //new InetSocketAddress("stun.softjoys.com", port),
             new InetSocketAddress("stun.voipbuster.com", port),
             new InetSocketAddress("stun.voxgratia.org", port),
             new InetSocketAddress("stun.xten.com", port),

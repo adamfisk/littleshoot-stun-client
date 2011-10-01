@@ -10,7 +10,6 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.lang.StringUtils;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
-import org.littleshoot.stun.stack.StunConstants;
 import org.littleshoot.util.PublicIp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +51,9 @@ public class PublicIpAddress implements PublicIp {
         // Note these will all fail if you don't have a network connection --
         // that should not be confused with them being blocked. 
         try {
-            final StunClient stun = new UdpStunClient(StunConstants.SERVERS);
+            final StunClient stun = 
+                new UdpStunClient(StunServerRepository.getServers());
+            
             stun.connect();
             publicIp = stun.getServerReflexiveAddress().getAddress();
             lastLookupTime = System.currentTimeMillis();
