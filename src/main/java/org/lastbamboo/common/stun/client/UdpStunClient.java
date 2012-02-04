@@ -13,6 +13,8 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.id.uuid.UUID;
+import org.littleshoot.dnssec4j.DNSSECException;
+import org.littleshoot.dnssec4j.DnsSec;
 import org.littleshoot.mina.common.ByteBuffer;
 import org.littleshoot.mina.common.ConnectFuture;
 import org.littleshoot.mina.common.ExecutorThreadModel;
@@ -151,8 +153,11 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         }
         LOG.info("Creating UDP STUN CLIENT");
         for (final InetSocketAddress isa : stunServers) {
-            final RankedStunServer rss = new RankedStunServer(isa);
-            this.m_stunServers.add(rss);
+            try {
+                this.m_stunServers.add(new RankedStunServer(isa));
+            } catch (final DNSSECException e) {
+                LOG.warn("DNSSEC verification error!!", e);
+            }
         }
         ByteBuffer.setUseDirectBuffers(false);
         ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
@@ -451,11 +456,20 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
 
     private class RankedStunServer implements Comparable<RankedStunServer>{
 
-        private final InetSocketAddress isa;
+        private InetSocketAddress isa;
         private int successes;
         private int failures;
-        private RankedStunServer(final InetSocketAddress isa) {
-            this.isa = isa;
+        private RankedStunServer(final InetSocketAddress isa) 
+            throws DNSSECException {
+            if (isa.isUnresolved() && StunClientConfig.isUseDnsSec()) {
+                try {
+                    this.isa = DnsSec.verify(isa);
+                } catch (IOException e) {
+                    this.isa = isa;
+                }
+            } else {
+                this.isa = isa;
+            }
         }
         private int getScore() {
             return successes - failures;
