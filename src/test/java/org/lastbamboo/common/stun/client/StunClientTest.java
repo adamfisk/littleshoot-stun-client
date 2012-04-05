@@ -53,7 +53,7 @@ public class StunClientTest {
             //new InetSocketAddress("stun.softjoys.com", port),
             new InetSocketAddress("stun.voipbuster.com", port),
             new InetSocketAddress("stun.voxgratia.org", port),
-            new InetSocketAddress("stun.xten.com", port),
+            //new InetSocketAddress("stun.xten.com", port),
             //new InetSocketAddress("stunserver.org", port),
             new InetSocketAddress("stun.sipgate.net", 10000),
             new InetSocketAddress("numb.viagenie.ca", port) 
@@ -90,7 +90,7 @@ public class StunClientTest {
             new InetSocketAddress("stun.softjoys.com", port),
             new InetSocketAddress("stun.voipbuster.com", port),
             new InetSocketAddress("stun.voxgratia.org", port),
-            new InetSocketAddress("stun.xten.com", port),
+            //new InetSocketAddress("stun.xten.com", port),
             new InetSocketAddress("stun.sipgate.net", 10000),
             new InetSocketAddress("numb.viagenie.ca", port) 
         };
