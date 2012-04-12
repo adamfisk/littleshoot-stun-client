@@ -270,7 +270,9 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
                 LOG.debug("Actually waiting...");
                 request.wait(waitTime);
             } catch (final InterruptedException e) {
-                LOG.error("Unexpected interrupt", e);
+                // This can happen if multiple STUN clients are started in
+                // a thread pool, for example.
+                LOG.info("Interrupt", e);
             }
         }
     }

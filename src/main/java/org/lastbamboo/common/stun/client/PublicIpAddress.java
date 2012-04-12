@@ -2,7 +2,16 @@ package org.lastbamboo.common.stun.client;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.nio.channels.UnresolvedAddressException;
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -36,6 +45,16 @@ public class PublicIpAddress implements PublicIp {
     private static InetAddress publicIp;
     private static long lastLookupTime;
     
+    private static final ExecutorService threadPool = 
+        Executors.newCachedThreadPool(new ThreadFactory() {
+        @Override
+        public Thread newThread(final Runnable runner) {
+            final Thread thread = new Thread(runner, "Public-IP-Lookup-Thread");
+            thread.setDaemon(true);
+            return thread;
+        }
+    });
+    
     /**
      * Determines the public IP address of this node.
      * 
@@ -48,21 +67,16 @@ public class PublicIpAddress implements PublicIp {
             return publicIp;
         }
         
-        // Note these will all fail if you don't have a network connection --
-        // that should not be confused with them being blocked. 
         try {
-            final StunClient stun = 
-                new UdpStunClient(StunServerRepository.getServers());
-            
-            stun.connect();
-            publicIp = stun.getServerReflexiveAddress().getAddress();
-            lastLookupTime = System.currentTimeMillis();
-            return publicIp;
-        } catch (final IOException e) {
-            LOG.warn("Could not get server reflexive address", e);
-        } catch (final UnresolvedAddressException e) {
-            LOG.warn("Not connected to the network?", e);
+            publicIp = stunLookup();
+        } catch (final InterruptedException e) {
+            LOG.error("Could not perform STUN lookup", e);
+        } catch (final ExecutionException e) {
+            LOG.error("Could not perform STUN lookup", e);
+        } catch (final TimeoutException e) {
+            LOG.error("Could not perform STUN lookup", e);
         }
+
         publicIp = wikiMediaLookup();
         if (publicIp != null) {
             lastLookupTime = System.currentTimeMillis();
@@ -74,6 +88,28 @@ public class PublicIpAddress implements PublicIp {
             return publicIp;
         }
         return null;
+    }
+
+    private InetAddress stunLookup() throws InterruptedException, 
+        ExecutionException, TimeoutException {
+        final Collection<InetSocketAddress> servers = 
+            StunServerRepository.getServers();
+        final Collection<Callable<InetAddress>> tasks = 
+            new ArrayList<Callable<InetAddress>>(servers.size());
+        for (final InetSocketAddress sock : servers) {
+            final Callable<InetAddress> task = new Callable<InetAddress>() {
+                @Override
+                public InetAddress call() throws Exception {
+                    final StunClient stun = new UdpStunClient(sock);
+                    stun.connect();
+                    publicIp = stun.getServerReflexiveAddress().getAddress();
+                    lastLookupTime = System.currentTimeMillis();
+                    return publicIp;
+                }
+            };
+            tasks.add(task);
+        }
+        return threadPool.invokeAny(tasks, 6, TimeUnit.SECONDS);
     }
 
     private static InetAddress ifConfigLookup() {
