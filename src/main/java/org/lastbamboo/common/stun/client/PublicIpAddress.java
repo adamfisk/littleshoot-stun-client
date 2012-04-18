@@ -69,6 +69,7 @@ public class PublicIpAddress implements PublicIp {
         
         try {
             publicIp = stunLookup();
+            return publicIp;
         } catch (final InterruptedException e) {
             LOG.error("Could not perform STUN lookup", e);
         } catch (final ExecutionException e) {
