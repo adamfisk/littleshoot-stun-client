@@ -303,10 +303,10 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
     }
 
     public void close() {
-        LOG.debug("Closing sessions...");
+        LOG.info("Closing sessions...");
         synchronized (m_sessions) {
             for (final IoSession session : m_sessions) {
-                LOG.debug("Closing: {}", session);
+                LOG.info("Closing: {}", session);
                 session.close();
             }
         }
