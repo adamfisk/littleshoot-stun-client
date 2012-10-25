@@ -48,15 +48,15 @@ public class StunClientTest {
             new InetSocketAddress("stun.l.google.com", 19302),
             //new InetSocketAddress("stun.ekiga.net", port),
             //new InetSocketAddress("stun.fwdnet.net", port),
-            new InetSocketAddress("stun.ideasip.com", port),
+            //new InetSocketAddress("stun.ideasip.com", port),
             //new InetSocketAddress("stun01.sipphone.com", port),
             //new InetSocketAddress("stun.softjoys.com", port),
             new InetSocketAddress("stun.voipbuster.com", port),
-            new InetSocketAddress("stun.voxgratia.org", port),
+            //new InetSocketAddress("stun.voxgratia.org", port),
             //new InetSocketAddress("stun.xten.com", port),
             //new InetSocketAddress("stunserver.org", port),
-            new InetSocketAddress("stun.sipgate.net", 10000),
-            new InetSocketAddress("numb.viagenie.ca", port) 
+            //new InetSocketAddress("stun.sipgate.net", 10000),
+            //new InetSocketAddress("numb.viagenie.ca", port) 
         };
         
         InetAddress ia = null;
@@ -66,7 +66,7 @@ public class StunClientTest {
             sc.connect();
             final InetSocketAddress ip = sc.getServerReflexiveAddress();
             if (ia != null) {
-                assertEquals(ia, ip.getAddress());
+                assertEquals("Address lookup failed for "+server, ia, ip.getAddress());
             }
             else {
                 ia = ip.getAddress();
