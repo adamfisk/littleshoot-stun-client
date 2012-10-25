@@ -6,7 +6,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
@@ -75,8 +74,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
 
     private final InetSocketAddress m_originalLocalAddress;
 
-    private final Collection<IoSession> m_sessions = 
-        new LinkedList<IoSession>();
+    private final Collection<IoSession> m_sessions = new ArrayList<IoSession>();
 
     private final Queue<RankedStunServer> m_stunServers = 
         new PriorityQueue<UdpStunClient.RankedStunServer>();
@@ -180,6 +178,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
         }
     }
    
+    @Override
     public void connect() throws IOException {
         IoSession session;
         try {
@@ -483,6 +482,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
             return "RankedStunServer [isa=" + isa + " score="+getScore()+"]";
         }
         
+        @Override
         public int compareTo(final RankedStunServer rss) {
             final Integer score1 = rss.getScore();
             return score1.compareTo(getScore());
