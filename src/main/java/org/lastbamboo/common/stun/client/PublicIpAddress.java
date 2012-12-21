@@ -47,10 +47,14 @@ public class PublicIpAddress implements PublicIp {
     
     private static final ExecutorService threadPool = 
         Executors.newCachedThreadPool(new ThreadFactory() {
+            
+        private int count = 0;
         @Override
         public Thread newThread(final Runnable runner) {
-            final Thread thread = new Thread(runner, "Public-IP-Lookup-Thread");
+            final Thread thread = new Thread(runner, 
+                "Public-IP-Lookup-Thread-"+count);
             thread.setDaemon(true);
+            count++;
             return thread;
         }
     });
