@@ -114,7 +114,7 @@ public class PublicIpAddress implements PublicIp {
             };
             tasks.add(task);
         }
-        return threadPool.invokeAny(tasks, 6, TimeUnit.SECONDS);
+        return threadPool.invokeAny(tasks, 12, TimeUnit.SECONDS);
     }
 
     private static InetAddress ifConfigLookup() {
