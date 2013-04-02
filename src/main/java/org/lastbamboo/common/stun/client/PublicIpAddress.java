@@ -67,7 +67,9 @@ public class PublicIpAddress implements PublicIp {
     @Override
     public InetAddress getPublicIpAddress() {
         final long now = System.currentTimeMillis();
-        if (now - lastLookupTime < 100 * 1000) {
+        if (now - lastLookupTime < 100 * 1000 &&
+                (now - lastLookupTime < 5 * 1000 ||
+                        publicIp != null)) {
             return publicIp;
         }
         
