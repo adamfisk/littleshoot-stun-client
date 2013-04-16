@@ -136,11 +136,11 @@ public class PublicIpAddress implements PublicIp {
             LOG.info("Got response body:\n{}", body);
             return InetAddress.getByName(body.trim());
         } catch (final HttpException e) {
-            LOG.warn("HTTP error?", e);
+            LOG.info("HTTP error?", e);
         } catch (final IOException e) {
-            LOG.warn("Error connecting?", e);
+            LOG.info("Error connecting?", e);
         } catch (final Exception e) {
-            LOG.warn("Some other error?", e);
+            LOG.info("Some other error?", e);
         } finally {
             get.releaseConnection();
         }
