@@ -132,7 +132,7 @@ public class PublicIpAddress implements PublicIp {
                 LOG.warn("Got non-200 level response: "+response);
                 return null;
             }
-            final String body = new String(get.getResponseBody(), "UTF-8");
+            final String body = new String(get.getResponseBody(47), "UTF-8");
             LOG.info("Got response body:\n{}", body);
             return InetAddress.getByName(body.trim());
         } catch (final HttpException e) {
@@ -158,7 +158,7 @@ public class PublicIpAddress implements PublicIp {
                 LOG.warn("Got non-200 level response: "+response);
                 return null;
             }
-            final String body = new String(get.getResponseBody(), "UTF-8");
+            final String body = new String(get.getResponseBody(1000), "UTF-8");
             LOG.info("Got response body:\n{}", body);
             
             final String jsonStr = StringUtils.substringAfter(body, "=").trim();
