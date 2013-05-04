@@ -45,6 +45,8 @@ public class PublicIpAddress implements PublicIp {
     private static InetAddress publicIp;
     private static long lastLookupTime;
     
+    private final long cacheTime;
+
     private static final ExecutorService threadPool = 
         Executors.newCachedThreadPool(new ThreadFactory() {
             
@@ -59,6 +61,14 @@ public class PublicIpAddress implements PublicIp {
         }
     });
     
+    public PublicIpAddress() {
+        this.cacheTime = 100L;
+    }
+    
+    public PublicIpAddress(final long cacheTime) {
+        this.cacheTime = cacheTime;
+    }
+    
     /**
      * Determines the public IP address of this node.
      * 
@@ -67,8 +77,8 @@ public class PublicIpAddress implements PublicIp {
     @Override
     public InetAddress getPublicIpAddress() {
         final long now = System.currentTimeMillis();
-        if (now - lastLookupTime < 100 * 1000 &&
-                (now - lastLookupTime < 5 * 1000 ||
+        if (now - lastLookupTime < this.cacheTime * 1000 &&
+                (now - lastLookupTime < 2 * 1000 ||
                         publicIp != null)) {
             return publicIp;
         }
