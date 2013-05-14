@@ -3,7 +3,7 @@
     <groupId>org.littleshoot</groupId>
     <artifactId>stun-client</artifactId>
     <packaging>jar</packaging>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.3</version>
     <name>LittleShoot STUN Client</name>
     <url>http://www.littleshoot.org</url>
 
