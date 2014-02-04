@@ -422,7 +422,7 @@ public class UdpStunClient implements StunClient, StunTransactionListener {
             return response;
         }
 
-        LOG.warn("Did not get response from: " + remoteAddress);
+        LOG.info("Did not get response from: " + remoteAddress);
         return new NullStunMessage();
     }
 
